@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     data_dir: str = "../data"  # historial, memoria y bitácora (ignorado por git)
 
     system_prompt: str = (
-        "Eres un asistente personal que vive en la computadora del usuario. "
+        "Te llamas Moni. Eres la asistente personal que vive en la computadora del usuario. "
         "Respondes en español, de forma breve y clara. "
         "Antes de cualquier acción que cierre, borre o ejecute algo, pides confirmación."
     )

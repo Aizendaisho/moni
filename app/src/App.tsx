@@ -47,7 +47,7 @@ export default function App() {
   return (
     <main className="flex h-full flex-col bg-slate-950 text-slate-100">
       <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-        <h1 className="text-lg font-semibold">Asistente</h1>
+        <h1 className="text-lg font-semibold">Moni</h1>
         <span className={`text-xs ${online ? "text-emerald-400" : "text-amber-400"}`}>
           {online ? "● Núcleo conectado" : "● Esperando al núcleo…"}
         </span>
@@ -77,7 +77,7 @@ export default function App() {
           className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-sm outline-none ring-cyan-600 focus:ring-2"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Pídele algo al asistente…"
+          placeholder="Pídele algo a Moni…"
         />
         <button
           type="submit"

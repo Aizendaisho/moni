@@ -1,6 +1,6 @@
-# Asistente PC
+# Moni
 
-Asistente personal de escritorio, 100 % local y open source: controla la computadora con permisos por niveles, conversa por voz, tiene un avatar 2D y puede ver por la cámara.
+Moni es una asistente personal de escritorio, 100 % local y open source: controla la computadora con permisos por niveles, conversa por voz, tiene un avatar 2D y puede ver por la cámara.
 
 > Estado: **S0 · Fundaciones**. El seguimiento de sprints está en el [Roadmap del Asistente](https://claude.ai/artifact/LvaxDFJoLqLg2sWaXYnGbC).
 

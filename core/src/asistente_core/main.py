@@ -13,7 +13,7 @@ from .agent.llm import stream_chat
 from .config import settings
 
 log = logging.getLogger("asistente")
-app = FastAPI(title="Asistente · núcleo", version="0.1.0")
+app = FastAPI(title="Moni · núcleo", version="0.1.0")
 
 
 @app.get("/health")

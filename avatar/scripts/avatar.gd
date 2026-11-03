@@ -1,5 +1,5 @@
 extends Node2D
-## Avatar 2D del asistente (sprint S4).
+## Avatar 2D de Moni (sprint S4).
 ## Se conecta al núcleo por WebSocket y muestra en qué estado está.
 ## Pendiente en S4: sprites del personaje, lip sync y expresiones.
 
