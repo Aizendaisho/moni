@@ -56,10 +56,20 @@ El núcleo expone un WebSocket en `ws://127.0.0.1:8765/ws` (solo localhost). Men
 
 | Dirección | Mensaje | Uso |
 |---|---|---|
-| app → núcleo | `{"type": "chat", "text": "..."}` | pregunta del usuario |
+| app → núcleo | `{"type": "chat", "text": "..."}` | mensaje del usuario |
+| app → núcleo | `{"type": "new_conversation"}` | empezar una conversación nueva |
+| núcleo → app | `{"type": "history", "messages": [...]}` | historial guardado, al conectar |
 | núcleo → app | `{"type": "token", "text": "..."}` | fragmento de respuesta (streaming) |
+| núcleo → app | `{"type": "tool", "label": "...", "status": "start" \| "end"}` | Moni está usando una herramienta |
 | núcleo → app | `{"type": "done"}` | fin de la respuesta |
 | núcleo → app | `{"type": "error", "message": "..."}` | algo falló |
+
+## Agente y herramientas
+
+- `core/.../agent/loop.py`: el modelo recibe los esquemas de las herramientas; si pide una, el núcleo la ejecuta (según su nivel de permiso) y le devuelve el resultado, hasta 5 rondas por mensaje.
+- `core/.../tools/`: cada herramienta es una función con `@herramienta(Nivel..., etiqueta=...)` y docstring estilo Google; de ahí sale el esquema que ve el modelo.
+- `core/.../agent/personalidad.md`: cómo habla Moni. Se relee en cada mensaje.
+- `data/moni.db`: historial en SQLite (conversaciones y mensajes, incluidos los resultados de herramientas).
 
 Pendiente en S4: un canal de eventos compartido (`estado`: escuchando / pensando / hablando, y `viseme` para la boca) que el núcleo envíe a todas las conexiones, para que el avatar reaccione a lo que pasa en la app.
 

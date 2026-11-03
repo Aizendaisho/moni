@@ -1,14 +1,16 @@
 // Conexión con el núcleo Python (core/) por WebSocket.
-// El núcleo escucha en ws://127.0.0.1:8765/ws (ver core/src/asistente_core/config.py).
+// El núcleo escucha en ws://127.0.0.1:8765/ws (ver core/src/asistente_core/main.py).
 
 export const CORE_WS_URL = "ws://127.0.0.1:8765/ws";
 
 /** Mensajes que la app envía al núcleo. */
-export type ClientMessage = { type: "chat"; text: string };
+export type ClientMessage = { type: "chat"; text: string } | { type: "new_conversation" };
 
 /** Mensajes que el núcleo envía a la app. */
 export type CoreMessage =
+  | { type: "history"; conversation_id: number; messages: { role: "user" | "assistant"; text: string }[] }
   | { type: "token"; text: string } // fragmento de la respuesta en streaming
+  | { type: "tool"; name: string; label: string; status: "start" | "end"; ok?: boolean }
   | { type: "done" } // terminó la respuesta
   | { type: "error"; message: string };
 

@@ -8,27 +8,46 @@ export default function App() {
   const [input, setInput] = useState("");
   const [online, setOnline] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tool, setTool] = useState<string | null>(null); // herramienta en uso
   const core = useRef<ReturnType<typeof connectCore> | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onMessage = (msg: CoreMessage) => {
-      if (msg.type === "token") {
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === "assistant") {
-            return [...prev.slice(0, -1), { ...last, text: last.text + msg.text }];
-          }
-          return [...prev, { role: "assistant", text: msg.text }];
-        });
-      } else if (msg.type === "done") {
-        setBusy(false);
-      } else if (msg.type === "error") {
-        setBusy(false);
-        setMessages((prev) => [...prev, { role: "assistant", text: `⚠️ ${msg.message}` }]);
+      switch (msg.type) {
+        case "history":
+          setMessages(msg.messages);
+          setBusy(false);
+          setTool(null);
+          break;
+        case "token":
+          setTool(null);
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant") {
+              return [...prev.slice(0, -1), { ...last, text: last.text + msg.text }];
+            }
+            return [...prev, { role: "assistant", text: msg.text }];
+          });
+          break;
+        case "tool":
+          setTool(msg.status === "start" ? msg.label : null);
+          break;
+        case "done":
+          setBusy(false);
+          setTool(null);
+          break;
+        case "error":
+          setBusy(false);
+          setTool(null);
+          setMessages((prev) => [...prev, { role: "assistant", text: `⚠️ ${msg.message}` }]);
+          break;
       }
     };
-    core.current = connectCore(onMessage, setOnline);
+    core.current = connectCore(onMessage, (ok) => {
+      setOnline(ok);
+      if (!ok) setBusy(false);
+    });
     return () => core.current?.close();
   }, []);
 
@@ -36,7 +55,7 @@ export default function App() {
   // y si el efecto la devuelve React la trata como función de limpieza y la app entera se cae.
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, tool]);
 
   const send = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,19 +67,36 @@ export default function App() {
     core.current?.send({ type: "chat", text });
   };
 
+  const newConversation = () => {
+    if (!online || busy) return;
+    core.current?.send({ type: "new_conversation" });
+  };
+
+  const waiting = busy && messages[messages.length - 1]?.role === "user";
+
   return (
     <main className="flex h-full flex-col bg-slate-950 text-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+      <header className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
         <h1 className="text-lg font-semibold">Moni</h1>
-        <span className={`text-xs ${online ? "text-emerald-400" : "text-amber-400"}`}>
-          {online ? "● Núcleo conectado" : "● Esperando al núcleo…"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs ${online ? "text-emerald-400" : "text-amber-400"}`}>
+            {online ? "● Núcleo conectado" : "● Esperando al núcleo…"}
+          </span>
+          <button
+            onClick={newConversation}
+            disabled={!online || busy || messages.length === 0}
+            className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+          >
+            Nueva conversación
+          </button>
+        </div>
       </header>
 
       <section className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <p className="text-sm text-slate-400">
-            Escribe algo para empezar. Si dice "Esperando al núcleo", ejecuta <code>scripts\dev.bat</code>.
+            Escribe algo para empezar. Prueba: "¿qué programas están usando más memoria?" o "¿cómo
+            está la batería?".
           </p>
         )}
         {messages.map((m, i) => (
@@ -73,9 +109,9 @@ export default function App() {
             {m.text}
           </div>
         ))}
-        {busy && messages[messages.length - 1]?.role === "user" && (
+        {(tool || waiting) && (
           <div className="w-fit animate-pulse rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-400">
-            Moni está pensando…
+            {tool ? `🔧 ${tool}…` : "Moni está pensando…"}
           </div>
         )}
         <div ref={bottom} />
