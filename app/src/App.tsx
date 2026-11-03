@@ -73,6 +73,11 @@ export default function App() {
             {m.text}
           </div>
         ))}
+        {busy && messages[messages.length - 1]?.role === "user" && (
+          <div className="w-fit animate-pulse rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-400">
+            Moni está pensando…
+          </div>
+        )}
         <div ref={bottom} />
       </section>
 

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     ollama_host: str = "http://127.0.0.1:11434"
     llm_model: str = "qwen3:4b"
+    # Qwen3 "piensa" en silencio antes de responder; apagado responde mucho más rápido.
+    llm_think: bool = False
     vision_model: str = "moondream"
     embed_model: str = "nomic-embed-text"
 
