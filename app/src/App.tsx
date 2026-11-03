@@ -32,7 +32,11 @@ export default function App() {
     return () => core.current?.close();
   }, []);
 
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), [messages]);
+  // Llaves obligatorias: en Chromium/WebView2 recientes scrollIntoView devuelve una Promise,
+  // y si el efecto la devuelve React la trata como función de limpieza y la app entera se cae.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const send = (e: React.FormEvent) => {
     e.preventDefault();
