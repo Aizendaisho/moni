@@ -38,11 +38,13 @@ async def ws_endpoint(ws: WebSocket) -> None:
                     await ws.send_json({"type": "token", "text": token})
                 history.append({"role": "assistant", "content": reply})
                 await ws.send_json({"type": "done"})
+            except (WebSocketDisconnect, RuntimeError):
+                raise  # la ventana se cerró a mitad de respuesta: no hay a quién avisar
             except Exception as exc:  # Ollama apagado, modelo sin descargar, etc.
                 log.exception("Error al generar respuesta")
                 await ws.send_json({"type": "error", "message": f"No pude responder: {exc}"})
-    except WebSocketDisconnect:
-        pass
+    except (WebSocketDisconnect, RuntimeError):
+        log.info("Ventana desconectada")
 
 
 def run() -> None:
