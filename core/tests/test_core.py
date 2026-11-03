@@ -21,3 +21,12 @@ def test_listar_procesos():
     procesos = listar_procesos(limite=3)
     assert 0 < len(procesos) <= 3
     assert {"pid", "nombre", "memoria_mb"} <= procesos[0].keys()
+
+
+def test_no_think_se_agrega_al_ultimo_mensaje():
+    from asistente_core.agent.llm import _preparar
+
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "hola"}]
+    out = _preparar(msgs)
+    assert out[-1]["content"] == "hola /no_think"
+    assert msgs[-1]["content"] == "hola"  # no modifica el historial original
