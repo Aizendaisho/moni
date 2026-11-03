@@ -11,9 +11,8 @@ class Settings(BaseSettings):
     port: int = 8765
 
     ollama_host: str = "http://127.0.0.1:11434"
-    llm_model: str = "qwen3:4b"
-    # Qwen3 "piensa" en silencio antes de responder; apagado responde mucho más rápido.
-    llm_think: bool = False
+    llm_model: str = "qwen3:4b-instruct"  # responde directo, sin fase de razonamiento
+    llm_think: bool = False  # True solo con modelos que razonan (p. ej. qwen3:4b)
     vision_model: str = "moondream"
     embed_model: str = "nomic-embed-text"
 

@@ -1,6 +1,10 @@
-"""Cliente del LLM local (Ollama). En S1 se añade aquí el bucle de herramientas (tool calling)."""
+"""Cliente del LLM local (Ollama). En S1 se añade aquí el bucle de herramientas (tool calling).
 
-import re
+Modelo por defecto: qwen3:4b-instruct (Qwen3-4B-Instruct-2507), que responde directo.
+La etiqueta qwen3:4b apunta a la variante "Thinking", que siempre razona antes de contestar
+(~700 tokens extra, unos 35 s en una RTX 3050 Ti) aunque se le pida que no lo haga.
+"""
+
 from collections.abc import AsyncIterator
 
 from ollama import AsyncClient
@@ -8,31 +12,17 @@ from ollama import AsyncClient
 from ..config import settings
 
 _client = AsyncClient(host=settings.ollama_host)
-_THINK_TAGS = re.compile(r"</?think>")
-
-
-def _preparar(messages: list[dict]) -> list[dict]:
-    """Con llm_think apagado se usa el interruptor "/no_think" de Qwen3: el modelo se salta
-    el razonamiento y responde directo. (Pasar think=False a Ollama hace que algunos modelos
-    escriban el razonamiento dentro de la respuesta, por eso no se usa)."""
-    if settings.llm_think or not messages or messages[-1].get("role") != "user":
-        return messages
-    ultimo = {**messages[-1], "content": f"{messages[-1]['content']} /no_think"}
-    return [*messages[:-1], ultimo]
 
 
 async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
     """Envía la conversación al modelo y devuelve solo la respuesta final, por fragmentos.
-    El razonamiento (si lo hay) llega aparte en message.thinking y no se muestra."""
-    stream = await _client.chat(
-        model=settings.llm_model,
-        messages=_preparar(messages),
-        stream=True,
-        think=True,
-    )
+    Si llm_think está activo y el modelo razona, el razonamiento llega aparte
+    (message.thinking) y no se muestra."""
+    extra = {"think": True} if settings.llm_think else {}
+    stream = await _client.chat(model=settings.llm_model, messages=messages, stream=True, **extra)
     empezo = False
     async for part in stream:
-        text = _THINK_TAGS.sub("", part["message"]["content"] or "")
+        text = part["message"]["content"] or ""
         if not empezo:
             text = text.lstrip()  # quita saltos de línea iniciales
         if text:

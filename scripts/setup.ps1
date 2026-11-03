@@ -107,7 +107,7 @@ if ($SinModelos) {
         Start-Process ollama -ArgumentList "serve" -WindowStyle Hidden
         Start-Sleep -Seconds 5
     }
-    foreach ($m in @("qwen3:4b", "moondream", "nomic-embed-text")) {
+    foreach ($m in @("qwen3:4b-instruct", "moondream", "nomic-embed-text")) {
         Write-Host "    Descargando $m..."
         ollama pull $m
         if ($LASTEXITCODE -eq 0) { Ok $m } else { Aviso "Falló $m"; $Fallos += "Ollama: $m" }

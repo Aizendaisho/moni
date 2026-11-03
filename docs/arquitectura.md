@@ -24,7 +24,7 @@ flowchart LR
     MEM[Memoria<br/>sqlite-vec]
     MCP[Integraciones MCP]
   end
-  OLL[(Ollama<br/>qwen3:4b · moondream · nomic-embed-text)]
+  OLL[(Ollama<br/>qwen3:4b-instruct · moondream · nomic-embed-text)]
   APP <--> AG
   AV <--> AG
   AG --> PERM --> TOOLS
@@ -67,7 +67,7 @@ Pendiente en S4: un canal de eventos compartido (`estado`: escuchando / pensando
 
 | Pieza | Dónde | Aprox. |
 |---|---|---|
-| qwen3:4b (Q4) | GPU | 2.5–3 GB VRAM |
+| qwen3:4b-instruct (Q4) | GPU | 2.5–3 GB VRAM |
 | moondream | GPU, solo bajo demanda | ~1.7 GB VRAM (Ollama descarga el LLM mientras tanto) |
 | faster-whisper small (int8) | CPU | ~0.5 GB RAM |
 | Piper | CPU | ~0.1 GB RAM |
