@@ -1,0 +1,23 @@
+# Datos locales: modelos, historial, memoria
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+core/.env
+
+# Node / Tauri
+node_modules/
+app/dist/
+app/src-tauri/target/
+app/src-tauri/gen/
+
+# Godot
+avatar/.godot/
+
+# Sistema
+.DS_Store
+Thumbs.db
