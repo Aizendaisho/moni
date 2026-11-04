@@ -16,8 +16,12 @@ examples:
 2. Explica en 3 a 5 frases, en lenguaje sencillo, lo que dice "puede". Empieza por lo de
    "a_vigilar" si lo hay (teclado, pantalla, memoria de otros programas) y explica por qué
    llama la atención.
-3. Menciona la tecnología si viene (.NET, Go) y si tiene certificado incrustado.
+3. Menciona la tecnología si viene (.NET, Go) y si tiene certificado incrustado. Si es .NET,
+   di que sus capacidades no se pueden ver con este análisis: no afirmes que no usa el
+   teclado, la pantalla ni nada. Tener certificado no prueba que sea oficial: solo que
+   viene firmado.
 4. Deja claro que es lo que PUEDE hacer según su estructura, no una prueba de que lo haga ni
-   de que sea malicioso. Para saber si tiene virus, ofrece revisar_archivo.
+   de que sea malicioso. Para saber si tiene virus, ofrece revisarlo (sin nombrar la
+   herramienta).
 5. Si falla porque falta Node.js, dilo tal cual y sugiere instalar Node.js 22 desde nodejs.org.
 6. Nunca ofrezcas ejecutar el programa, depurarlo ni modificarlo.
