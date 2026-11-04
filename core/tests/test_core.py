@@ -236,3 +236,162 @@ def test_websocket_pide_confirmacion(monkeypatch):
         assert hechos == []
     finally:
         REGISTRO.pop("_apagar")
+
+
+# ---------------------------------------------------------------- internet y memoria
+
+
+def _embed_falso(textos, tipo):
+    """Vectores de bolsa de palabras: textos con palabras en común se parecen."""
+    import zlib
+
+    import numpy as np
+
+    vs = []
+    for t in textos:
+        v = np.zeros(256, dtype=np.float32)
+        for w in t.lower().split():
+            v[zlib.crc32(w.strip(".,¿?").encode()) % 256] += 1
+        vs.append(v.tolist())
+    return vs
+
+
+def test_fragmentar_respeta_tamano():
+    from asistente_core.memory.conocimiento import fragmentar
+
+    texto = "\n\n".join(f"Párrafo {i}. " + "palabra " * 60 for i in range(20))
+    trozos = fragmentar(texto, tam=1200)
+    assert len(trozos) > 3 and all(len(t) <= 1400 for t in trozos)
+    assert fragmentar("") == []
+
+
+def test_conocimiento_guarda_y_recuerda():
+    from asistente_core.memory.conocimiento import Conocimiento
+
+    c = Conocimiento(":memory:", _embed_falso)
+    c.guardar(
+        "Don Quijote",
+        "Don Quijote de la Mancha fue escrito por Miguel de Cervantes.",
+        url="https://a.org/q",
+    )
+    c.guardar("Volcanes", "Los volcanes expulsan lava y ceniza.", url="https://b.org/v")
+    r = c.buscar("¿quién escribió Don Quijote?", umbral=0.1)
+    assert r[0]["titulo"] == "Don Quijote" and r[0]["url"] == "https://a.org/q"
+    # Volver a leer la misma URL la actualiza en vez de duplicarla
+    c.guardar(
+        "Don Quijote (2)", "Cervantes publicó la primera parte en 1605.", url="https://a.org/q"
+    )
+    assert [f["titulo"] for f in c.fuentes()] == ["Don Quijote (2)", "Volcanes"]
+
+
+def test_no_abre_direcciones_locales():
+    import pytest
+
+    from asistente_core.tools.web import validar_url
+
+    for url in [
+        "http://127.0.0.1:11434/api/tags",
+        "http://localhost:8765",
+        "http://192.168.1.1",
+        "file:///C:/Windows",
+        "ftp://x.org",
+    ]:
+        with pytest.raises(ValueError):
+            validar_url(url)
+
+
+def test_extraer_texto_de_html():
+    from asistente_core.tools.web import extraer
+
+    html = (
+        "<html><head><title>Receta de mangú</title></head><body><nav>Inicio | Menú</nav>"
+        "<article><h1>Mangú dominicano</h1>"
+        + "".join(
+            f"<p>Paso {i}: hierve los plátanos verdes y májalos con mantequilla.</p>"
+            for i in range(8)
+        )
+        + "</article><footer>© 2026</footer></body></html>"
+    )
+    titulo, texto = extraer(html, "https://ejemplo.com/mangu")
+    assert "mangú" in titulo.lower()
+    assert "plátanos" in texto and "Inicio | Menú" not in texto
+
+
+def test_leer_pagina_guarda_en_memoria(monkeypatch):
+    from asistente_core.memory import conocimiento as cmod
+    from asistente_core.tools import web
+
+    monkeypatch.setattr(cmod, "UMBRAL", 0.1)  # el embedder falso da similitudes más bajas
+    c = cmod.Conocimiento(":memory:", _embed_falso)
+    cmod.usar(c)
+    html = (
+        "<html><head><title>Cervantes</title></head><body><article>"
+        + "".join(
+            f"<p>Miguel de Cervantes escribió Don Quijote. Dato número {i} sobre su vida y obra.</p>"
+            for i in range(15)
+        )
+        + "</article></body></html>"
+    )
+    monkeypatch.setattr(web, "_descargar", lambda url: (html, url))
+    try:
+        salida = web.leer_pagina("https://ejemplo.org/cervantes")
+        assert "CONTENIDO DE LA PÁGINA" in salida and "Cervantes" in salida
+        assert c.fuentes()[0]["url"] == "https://ejemplo.org/cervantes"
+        assert web.recordar("Cervantes Don Quijote")[0]["titulo"] == "Cervantes"
+    finally:
+        cmod.usar(None)
+
+
+def test_historial_recorta_resultados_viejos():
+    h = Historial(":memory:")
+    c = h.nueva()
+    h.agregar(c, {"role": "user", "content": "lee algo"})
+    h.agregar(c, {"role": "tool", "tool_name": "leer_pagina", "content": "x" * 5000})
+    h.agregar(c, {"role": "assistant", "content": "listo"})
+    h.agregar(c, {"role": "user", "content": "otra cosa"})
+    h.agregar(c, {"role": "tool", "tool_name": "leer_pagina", "content": "y" * 5000})
+    msgs = h.mensajes(c)
+    assert len(msgs[1]["content"]) < 500  # turno anterior: recortado
+    assert len(msgs[4]["content"]) == 5000  # turno actual: completo
+
+
+def test_investigar_busca_lee_y_responde_con_fuentes(monkeypatch):
+    from asistente_core.memory import conocimiento as cmod
+    from asistente_core.tools import web
+
+    cmod.usar(cmod.Conocimiento(":memory:", _embed_falso))
+    paginas = {
+        "https://a.org/quijote": "<html><head><title>Quijote</title></head><body><article>"
+        + "".join(
+            f"<p>Dato {i}: la primera parte del Quijote se publicó en 1605 en Madrid,"
+            " impresa por Juan de la Cuesta.</p>"
+            for i in range(10)
+        )
+        + "</article></body></html>",
+        "https://b.org/roto": None,  # esta falla y se salta
+        "https://c.org/otro": "<html><head><title>Otro</title></head><body><article>"
+        + "".join(f"<p>Párrafo {i} sobre volcanes y montañas lejanas.</p>" for i in range(20))
+        + "</article></body></html>",
+    }
+
+    def descargar(url):
+        if paginas[url] is None:
+            raise ValueError("caída")
+        return paginas[url], url
+
+    monkeypatch.setattr(web, "_descargar", descargar)
+    monkeypatch.setattr(
+        web,
+        "buscar_en_internet",
+        lambda consulta, cantidad=5: [{"titulo": u, "url": u, "extracto": "..."} for u in paginas],
+    )
+    try:
+        r = web.investigar("¿cuándo se publicó la primera parte del Quijote?", paginas=2)
+        assert [p["url"] for p in r["paginas_leidas"]] == [
+            "https://a.org/quijote",
+            "https://c.org/otro",
+        ]
+        assert r["fragmentos"][0]["url"] == "https://a.org/quijote"
+        assert "1605" in r["fragmentos"][0]["texto"]
+    finally:
+        cmod.usar(None)

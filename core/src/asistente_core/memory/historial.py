@@ -75,9 +75,15 @@ class Historial:
             filas = filas[-limite:]
             while filas and filas[0]["rol"] != "user":
                 filas = filas[1:]
+        ultimo_user = max((i for i, f in enumerate(filas) if f["rol"] == "user"), default=-1)
         salida = []
-        for f in filas:
-            m: dict = {"role": f["rol"], "content": f["contenido"]}
+        for i, f in enumerate(filas):
+            contenido = f["contenido"]
+            # Los resultados de herramientas de turnos anteriores (páginas web enteras, listas
+            # de procesos) se recortan para no llenar el contexto; lo leído ya está en memoria.
+            if f["rol"] == "tool" and i < ultimo_user and len(contenido) > 400:
+                contenido = contenido[:400] + " …(recortado; usa recordar si lo necesitas)"
+            m: dict = {"role": f["rol"], "content": contenido}
             if f["herramienta"]:
                 m["tool_name"] = f["herramienta"]
             if f["llamadas"]:

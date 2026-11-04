@@ -24,6 +24,10 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | sqlite-vec | memoria vectorial | MIT / Apache-2.0 |
 | MCP SDK | integraciones | MIT |
 | Playwright | navegador | Apache-2.0 |
+| ddgs | búsqueda en internet | MIT |
+| trafilatura | extraer texto de páginas | Apache-2.0 |
+| httpx | descargas | BSD-3 |
+| NumPy | búsqueda por similitud | BSD-3 |
 
 ## Modelos
 

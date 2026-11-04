@@ -83,6 +83,13 @@ El núcleo expone un WebSocket en `ws://127.0.0.1:8765/ws` (solo localhost). Men
 
 Además, `tools/apps.py` tiene una lista de procesos protegidos (Windows, Ollama, la propia Moni) que no se cierran aunque se confirme.
 
+## Internet y memoria de conocimiento
+
+- `tools/web.py`: `buscar_en_internet` (librería ddgs: DuckDuckGo, Bing, Brave… sin clave), `leer_pagina` (httpx + trafilatura para extraer el texto principal; si la página se arma con JavaScript, se abre en Chromium sin ventana con Playwright), `recordar`, `guardar_en_memoria` y `lo_que_se`.
+- `memory/conocimiento.py`: todo lo leído se divide en fragmentos de ~1200 caracteres, se vectoriza con `nomic-embed-text` (Ollama) y se guarda en `data/moni.db` (tablas `fuentes` y `fragmentos`). `recordar` busca por similitud de significado (coseno con NumPy). Releer una URL la actualiza en vez de duplicarla.
+- Seguridad: solo http/https y nunca direcciones locales o privadas (también dentro del navegador), y el texto de las páginas se entrega al modelo marcado como información, no instrucciones.
+- Privacidad: las búsquedas y las páginas que se abren salen a internet; la app lo muestra con "Buscando en internet…" / "Leyendo página…". La memoria se queda en la PC.
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.

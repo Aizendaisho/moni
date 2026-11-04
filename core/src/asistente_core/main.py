@@ -26,13 +26,19 @@ from . import tools  # noqa: F401 - registra las herramientas
 from .agent.loop import Turno, responder
 from .agent.prompt import mensaje_sistema
 from .config import settings
-from .memory import bitacora
+from .memory import bitacora, conocimiento
 from .memory.historial import Historial
 
 log = logging.getLogger("moni")
-app = FastAPI(title="Moni · núcleo", version="0.3.0")
+app = FastAPI(title="Moni · núcleo", version="0.4.0")
 historial = Historial(settings.data_dir / "moni.db")
 bitacora.usar(bitacora.Bitacora(settings.data_dir / "moni.db"))
+conocimiento.usar(
+    conocimiento.Conocimiento(
+        settings.data_dir / "moni.db",
+        conocimiento.embedder_ollama(settings.ollama_host, settings.embed_model),
+    )
+)
 
 ESPERA_CONFIRMACION = 60  # segundos; sin respuesta cuenta como "no"
 
