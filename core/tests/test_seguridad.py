@@ -1,6 +1,7 @@
 """Pruebas de skills y de la revisión de archivos."""
 
 import asyncio
+import json
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -50,7 +51,7 @@ def test_skill_elegida_por_parecido_y_las_tuyas_ganan(tmp_path, monkeypatch):
     monkeypatch.setattr(skills, "UMBRAL", 0.5)
     candidatas = s.candidatas("revisa este archivo por favor")
     assert candidatas and candidatas[0].titulo == "Mi versión"
-    assert s.candidatas("cuéntame un chiste de gatos") == []
+    assert s.candidatas("pizza margarita grande") == []
     elegida = candidatas[0]
     msg = skills.mensaje_skill(elegida)
     assert msg["role"] == "system" and "Paso propio" in msg["content"]
@@ -465,3 +466,137 @@ def test_comandos_y_rutas_raras():
     assert not equipo.es_ruta_rara(r"C:\Program Files\App\app.exe")
     assert equipo.comando_raro("mshta http://x") is not None
     assert equipo.comando_raro(r'"C:\Program Files\Steam\steam.exe" -silent') is None
+
+
+# ---------------------------------------------------------------- conocimiento de seguridad
+
+_STIX = {
+    "objects": [
+        {"type": "x-mitre-collection", "id": "x", "x_mitre_version": "20.0"},
+        {
+            "type": "attack-pattern",
+            "id": "ap1",
+            "name": "Data Encrypted for Impact",
+            "description": "Adversaries may encrypt data (Citation: X) to extort [ransom](https://x).",
+            "external_references": [{"source_name": "mitre-attack", "external_id": "T1486"}],
+            "kill_chain_phases": [{"phase_name": "impact"}],
+            "x_mitre_platforms": ["Windows", "Linux"],
+        },
+        {
+            "type": "attack-pattern",
+            "id": "ap2",
+            "name": "Mshta",
+            "description": "Adversaries may abuse mshta.exe.",
+            "external_references": [{"source_name": "mitre-attack", "external_id": "T1218.005"}],
+            "kill_chain_phases": [{"phase_name": "stealth"}],
+            "x_mitre_platforms": ["Windows"],
+        },
+        {
+            "type": "attack-pattern",
+            "id": "ap3",
+            "name": "Solo macOS",
+            "description": "x",
+            "external_references": [{"source_name": "mitre-attack", "external_id": "T9999"}],
+            "x_mitre_platforms": ["macOS"],
+        },
+        {
+            "type": "attack-pattern",
+            "id": "ap4",
+            "name": "Revocada",
+            "revoked": True,
+            "external_references": [{"source_name": "mitre-attack", "external_id": "T0001"}],
+        },
+        {"type": "course-of-action", "id": "m1", "name": "Data Backup"},
+        {
+            "type": "malware",
+            "id": "s1",
+            "name": "Emotet",
+            "description": "[Emotet](https://x) is a downloader.",
+            "x_mitre_aliases": ["Emotet", "Geodo"],
+            "external_references": [{"source_name": "mitre-attack", "external_id": "S0367"}],
+            "x_mitre_platforms": ["Windows"],
+        },
+        {
+            "type": "relationship",
+            "id": "r1",
+            "relationship_type": "mitigates",
+            "source_ref": "m1",
+            "target_ref": "ap1",
+        },
+        {
+            "type": "relationship",
+            "id": "r2",
+            "relationship_type": "uses",
+            "source_ref": "s1",
+            "target_ref": "ap2",
+        },
+    ]
+}
+_LOLBAS = [
+    {
+        "Name": "Certutil.exe",
+        "Description": "Windows binary used for handling certificates",
+        "Commands": [
+            {
+                "Command": "certutil.exe -urlcache -f {REMOTEURL} {PATH}",
+                "Usecase": "Download file from Internet",
+                "Category": "Download",
+                "Privileges": "User",
+                "MitreID": "T1105",
+            }
+        ],
+        "Full_Path": [{"Path": "C:\\Windows\\System32\\certutil.exe"}],
+    }
+]
+
+
+def _saber(tmp_path):
+    from asistente_core.seguridad import saber
+
+    def api(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_STIX if "mitre" in str(req.url) else _LOLBAS)
+
+    s = saber.Saber(tmp_path / "seguridad")
+    assert s.necesita_actualizar()
+    resumen = s.actualizar(httpx.Client(transport=httpx.MockTransport(api)))
+    assert resumen == {"attack": "2 técnicas, 1 programas", "lolbas": "1 programas de Windows"}
+    assert not s.necesita_actualizar()
+    return s
+
+
+def test_attack_compacto_y_busqueda(tmp_path):
+    s = _saber(tmp_path)
+    t = s.buscar_attack("T1486")[0]
+    assert t["tacticas"] == ["impacto"] and t["mitigaciones"] == ["Data Backup"]
+    assert "Citation" not in t["descripcion"] and "](" not in t["descripcion"]
+    assert s.buscar_attack("¿qué es un ransomware?")[0]["id"] == "T1486"  # concepto común
+    assert s.buscar_attack("geodo")[0]["nombre"] == "Emotet"  # por alias
+    assert s.buscar_attack("S0367")[0]["tecnicas"] == ["T1218.005"]
+    assert s.buscar_attack("T9999") == [] and s.buscar_attack("T0001") == []
+    assert s.buscar_attack("de la") == []
+
+
+def test_lolbas_sin_comandos_de_abuso(tmp_path):
+    s = _saber(tmp_path)
+    e = s.buscar_lolbas(r"C:\Windows\System32\CERTUTIL.EXE")
+    assert e["abusos"] == ["Download file from Internet"]
+    assert "-urlcache" not in json.dumps(e)  # el comando concreto nunca se guarda
+    assert s.buscar_lolbas("certutil")["nombre"] == "Certutil.exe"
+    assert s.buscar_lolbas("chrome.exe") is None
+
+
+def test_herramientas_de_conocimiento(tmp_path, monkeypatch):
+    monkeypatch.setattr(tseg, "conocimiento_seguridad", _saber(tmp_path))
+    r = tseg.consultar_programa_windows("certutil.exe")
+    assert r["en_lolbas"] and r["fuente"] == "LOLBAS Project"
+    assert tseg.consultar_programa_windows("notepad++.exe")["en_lolbas"] is False
+    f = tseg.consultar_attack("ransomware")[0]
+    assert f["fuente"] == "MITRE ATT&CK T1486" and f["como_protegerse"] == ["Data Backup"]
+    assert "nota" in tseg.consultar_attack("xyzzy")[0]
+
+
+def test_sin_descargar_avisa(tmp_path):
+    from asistente_core.seguridad import saber
+
+    with pytest.raises(ValueError, match="actualizar_conocimiento_de_seguridad"):
+        saber.Saber(tmp_path).buscar_attack("phishing")

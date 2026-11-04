@@ -35,6 +35,8 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | pefile | revisar programas .exe | MIT |
 | CIRCL hashlookup (servicio) | ¿es un archivo conocido? (solo el hash) | servicio público gratuito |
 | MalwareBazaar de abuse.ch (servicio, opcional) | ¿es malware conocido? (solo el hash) | gratuito con clave |
+| MITRE ATT&CK (datos, se descargan en la PC) | conocimiento de ataques | términos de uso de MITRE: uso libre con atribución |
+| LOLBAS (datos, se descargan en la PC) | programas de Windows abusables | GPL-3.0 (no se incluye en el repo; sin los comandos de abuso) |
 | Reglas YARA de la comunidad (opcional, `data/reglas-yara`) | más detecciones | según cada repo; signature-base usa DRL 1.1 |
 
 ## Modelos

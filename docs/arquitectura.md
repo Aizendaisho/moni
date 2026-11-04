@@ -127,6 +127,15 @@ Veredicto: peligroso / sospechoso / sin hallazgos. Herramientas: `revisar_archiv
   desde carpetas raras. `recoger()` (Windows) y `evaluar()` (lógica pura, probada) están
   separados.
 
+## Conocimiento de seguridad
+
+`seguridad/saber.py`: al arrancar (y cada 30 días) descarga MITRE ATT&CK Enterprise (~55 MB) y
+LOLBAS y los compacta en `data/seguridad/` (~800 KB): técnicas de Windows con táctica,
+mitigaciones y detección; malware y herramientas con alias y técnicas; y de LOLBAS solo qué
+permite abusar cada programa (nunca los comandos). Herramientas: `consultar_attack` (por id,
+alias o palabras, con atajos para conceptos comunes como ransomware o keylogger),
+`consultar_programa_windows` y `actualizar_conocimiento_de_seguridad`. Skill `explicar-amenaza`.
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.

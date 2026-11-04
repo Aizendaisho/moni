@@ -90,11 +90,26 @@ async def _copias_automaticas() -> None:
         await asyncio.sleep(30 * 60)
 
 
+async def _conocimiento_de_seguridad() -> None:
+    """Descarga MITRE ATT&CK y LOLBAS si faltan o tienen más de 30 días."""
+    from .tools.seguridad import conocimiento_seguridad
+
+    try:
+        if conocimiento_seguridad.necesita_actualizar():
+            await asyncio.to_thread(conocimiento_seguridad.actualizar)
+    except Exception:
+        log.exception("No se pudo actualizar el conocimiento de seguridad")
+
+
 @asynccontextmanager
 async def ciclo_de_vida(_app: FastAPI):
-    tarea = asyncio.create_task(_copias_automaticas())
+    tareas = [
+        asyncio.create_task(_copias_automaticas()),
+        asyncio.create_task(_conocimiento_de_seguridad()),
+    ]
     yield
-    tarea.cancel()
+    for t in tareas:
+        t.cancel()
 
 
 app = FastAPI(title="Moni · núcleo", version="0.5.0", lifespan=ciclo_de_vida)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..config import settings
 from ..permissions.policy import Nivel
-from ..seguridad import analisis, cuarentena, equipo
+from ..seguridad import analisis, cuarentena, equipo, saber
 from .registry import herramienta
 
 _reglas = analisis.Reglas([analisis.REGLAS_MONI, settings.data_dir / "reglas-yara"])
@@ -236,3 +236,79 @@ def sacar_de_cuarentena(archivo: str) -> dict:
 def chequeo_de_seguridad() -> dict:
     """Revisa la seguridad de esta PC sin cambiar nada: antivirus (Windows Defender), firewall, actualizaciones de Windows, control de cuentas (UAC), programas que arrancan solos, tareas programadas, puertos abiertos a la red y programas que corren desde carpetas raras. Devuelve lo que es riesgo, lo que merece atención y lo que está bien."""
     return equipo.evaluar(equipo.recoger())
+
+
+# ---------------------------------------------------------------- conocimiento (ATT&CK, LOLBAS)
+
+conocimiento_seguridad = saber.Saber(settings.data_dir / "seguridad")
+
+
+def _ficha_attack(x: dict) -> dict:
+    ficha = {"id": x["id"], "nombre": x["nombre"], "descripcion": x["descripcion"]}
+    if "tacticas" in x:
+        ficha["tactica"] = ", ".join(x["tacticas"])
+        if x.get("mitigaciones"):
+            ficha["como_protegerse"] = x["mitigaciones"]
+        if x.get("deteccion"):
+            ficha["como_detectarlo"] = x["deteccion"]
+    else:
+        ficha["tipo"] = x["tipo"]
+        if x.get("alias"):
+            ficha["tambien_llamado"] = x["alias"]
+        if x.get("tecnicas"):
+            ficha["tecnicas_que_usa"] = x["tecnicas"][:8]
+    ficha["fuente"] = f"MITRE ATT&CK {x['id']}"
+    return ficha
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Consultando MITRE ATT&CK")
+def consultar_attack(consulta: str) -> list[dict]:
+    """Busca en MITRE ATT&CK (base de conocimiento de ataques reales, sin internet): técnicas que usan los atacantes (cómo funcionan, cómo protegerse, cómo detectarlas) y malware o herramientas conocidas (Emotet, Mimikatz...). Úsala para explicar amenazas con datos verificados.
+
+    Args:
+      consulta: Un id (T1566, T1218.005, S0367), el nombre de un malware, o palabras clave; mejor en inglés (por ejemplo "phishing", "keylogging", "ransomware", "scheduled task").
+    """
+    resultados = conocimiento_seguridad.buscar_attack(consulta)
+    if not resultados:
+        return [
+            {"nota": f"No encontré '{consulta}' en ATT&CK. Prueba con otras palabras en inglés."}
+        ]
+    return [_ficha_attack(x) for x in resultados]
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Consultando LOLBAS")
+def consultar_programa_windows(programa: str) -> dict:
+    """Dice si un programa de Windows (mshta.exe, certutil.exe, rundll32.exe...) aparece en LOLBAS, la lista de programas legítimos de Microsoft que los atacantes abusan, y para qué lo abusan. Úsala cuando un programa del sistema aparece en algo sospechoso.
+
+    Args:
+      programa: Nombre del programa o ruta completa, por ejemplo "certutil.exe".
+    """
+    e = conocimiento_seguridad.buscar_lolbas(programa)
+    if e is None:
+        return {
+            "programa": programa,
+            "en_lolbas": False,
+            "nota": "No está en LOLBAS. Eso no dice si es seguro o no: solo que no es un "
+            "programa de Microsoft conocido por ser abusado.",
+        }
+    tecnicas = []
+    for t in e["tecnicas"]:
+        encontrado = conocimiento_seguridad.buscar_attack(t)
+        tecnicas.append(f"{t} {encontrado[0]['nombre']}" if encontrado else t)
+    return {
+        "programa": e["nombre"],
+        "en_lolbas": True,
+        "uso_normal": e["descripcion"],
+        "donde_esta": e["rutas"][:2],
+        "los_atacantes_lo_usan_para": e["abusos"],
+        "tecnicas_attack": tecnicas,
+        "nota": "Es un programa legítimo de Windows: que exista en tu PC es normal. Lo "
+        "sospechoso es verlo lanzado por un documento, un script o desde una carpeta rara.",
+        "fuente": "LOLBAS Project",
+    }
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Actualizando el conocimiento de seguridad")
+def actualizar_conocimiento_de_seguridad() -> dict:
+    """Descarga de nuevo MITRE ATT&CK y LOLBAS (unos 55 MB) para tener la información de ataques al día. Se hace sola cada 30 días."""
+    return conocimiento_seguridad.actualizar()
