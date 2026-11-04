@@ -1,11 +1,13 @@
 """Herramientas de seguridad: revisar archivos y carpetas sin ejecutarlos (ver seguridad/analisis.py)."""
 
+import asyncio
 import difflib
 import os
 from datetime import datetime
 from pathlib import Path
 
 from ..config import settings
+from ..integrations import rea
 from ..permissions.policy import Nivel
 from ..seguridad import analisis, cuarentena, equipo, eventos, saber
 from .registry import herramienta
@@ -352,3 +354,22 @@ def revisar_eventos_completo(dias: int = 7) -> dict:
       dias: Cuántos días hacia atrás revisar (1 a 30).
     """
     return _revisar_eventos(dias, completo=True)
+
+
+# ---------------------------------------------------------------- REA (qué hace un programa)
+
+rea_integracion = rea.REA(settings.data_dir / "herramientas" / "rea")
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Analizando el programa por dentro")
+def explicar_programa(ruta: str) -> dict:
+    """Explica qué PUEDE hacer un programa de Windows (.exe o .dll) sin ejecutarlo, con REA: si usa internet, el teclado, la pantalla, el registro, otros programas; si está firmado; si es .NET o Go. También acepta la carpeta de una aplicación. Úsala cuando pregunten qué hace un programa por dentro, no si tiene virus (para eso, revisar_archivo). La primera vez instala REA (necesita Node.js 22+).
+
+    Args:
+      ruta: Ruta completa o nombre del archivo (como en revisar_archivo), o la carpeta de una aplicación.
+    """
+    p = resolver(ruta)
+    if not rea_integracion.instalado():
+        rea_integracion.instalar()
+    # Las herramientas corren en un hilo aparte (agent/loop.py): ahí se abre su propio bucle.
+    return asyncio.run(rea_integracion.explicar(p))

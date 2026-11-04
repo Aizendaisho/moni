@@ -743,3 +743,84 @@ def test_skill_run_first_consulta_antes(monkeypatch):
         skills.usar(None)
     assert llamadas == [("consultar_attack", {"consulta": "¿qué es un keylogger?"})]
     assert [x["role"] for x in vistos[0][-2:]] == ["assistant", "tool"]
+
+
+# ---------------------------------------------------------------- MCP y REA
+
+
+def test_mcp_solo_herramientas_permitidas():
+    from asistente_core.integrations.mcp_cliente import NoPermitida, ServidorMCP
+
+    s = ServidorMCP("REA", "node", ["x"], frozenset({"inspect_pe_imports"}))
+    with pytest.raises(NoPermitida):
+        asyncio.run(s.llamar_varias([("load_frida_script", {"source": "x"})]))
+
+
+def test_mcp_normaliza_resultados_v1_y_v2():
+    from asistente_core.integrations.mcp_cliente import _normalizar
+
+    v2 = NS(is_error=False, structured_content={"a": 1}, content=[])
+    v1 = NS(isError=False, structuredContent=None, content=[NS(text='{"b": 2}')])
+    err = NS(is_error=True, structured_content=None, content=[NS(text="falló")])
+    assert _normalizar(v2) == {"ok": True, "datos": {"a": 1}}
+    assert _normalizar(v1) == {"ok": True, "datos": {"b": 2}}
+    assert _normalizar(err) == {"ok": False, "error": "falló"}
+
+
+def test_rea_resumen_en_lenguaje_sencillo():
+    from asistente_core.integrations import rea
+
+    def imp(*funcs):
+        return {
+            "normalized_result": {
+                "format": "pe32-plus",
+                "bits": 64,
+                "imports": [
+                    {"name": "KERNEL32.dll", "functions": [{"name": f} for f in funcs]},
+                    {"name": "USER32.dll", "functions": []},
+                ],
+            }
+        }
+
+    nada = {"ok": False, "error": "x"}
+    r = rea.resumir(
+        imp("IsDebuggerPresent", "LoadLibraryW", "CreateFileW", "InternetOpenW"),
+        nada,
+        nada,
+        nada,
+        nada,
+        nombre="app.exe",
+    )
+    assert r["puede"] == ["conectarse a internet o a la red", "leer, crear o borrar archivos"]
+    assert "a_vigilar" not in r  # IsDebuggerPresent y LoadLibrary no alarman
+
+    espia = rea.resumir(
+        imp(
+            "SetWindowsHookExW",
+            "GetAsyncKeyState",
+            "BitBlt",
+            "WriteProcessMemory",
+            "VirtualAllocEx",
+        ),
+        nada,
+        nada,
+        nada,
+        nada,
+    )
+    assert set(espia["a_vigilar"]) == {
+        "leer el teclado o el ratón",
+        "capturar la pantalla",
+        "meterse en la memoria de otros programas",
+    }
+    assert "nota_importaciones" in espia  # pocas funciones: puede haber más
+
+    net = {
+        "ok": True,
+        "datos": {"normalized_result": {"summary": {"classification": {
+            "status": "managed", "runtime_family": "modern-dotnet", "implementation": "cil"}}}},
+    }  # fmt: skip
+    r = rea.resumir(imp(), nada, nada, net, nada)
+    assert r["tecnologia"].startswith(".NET") and "código administrado" in r["puede"][0]
+    assert (
+        "explicar_programa" in __import__("asistente_core.tools.registry", fromlist=["x"]).REGISTRO
+    )

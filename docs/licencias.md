@@ -38,6 +38,8 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | MITRE ATT&CK (datos, se descargan en la PC) | conocimiento de ataques | términos de uso de MITRE: uso libre con atribución |
 | LOLBAS (datos, se descargan en la PC) | programas de Windows abusables | GPL-3.0 (no se incluye en el repo; sin los comandos de abuso) |
 | Hayabusa 4.3.1 (se descarga en la PC) | revisar registros de eventos | AGPL-3.0; reglas DRL 1.1 |
+| REA (rea-agents 6.8.0, se instala en la PC) | qué puede hacer un programa (estático) | MIT |
+| Node.js 22+ (lo instala el usuario) | necesario para REA | MIT |
 | Reglas YARA de la comunidad (opcional, `data/reglas-yara`) | más detecciones | según cada repo; signature-base usa DRL 1.1 |
 
 ## Modelos

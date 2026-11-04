@@ -149,6 +149,21 @@ administrador (`Start-Process -Verb RunAs`, Windows muestra la ventana UAC). Las
 agrupan por regla y se ordenan por gravedad. Herramientas `revisar_eventos_de_windows` (libre) y `revisar_eventos_completo` (pide
 confirmación antes de la UAC); skill `revisar-eventos`.
 
+## Integraciones MCP y REA
+
+`integrations/mcp_cliente.py`: Moni es cliente MCP (stdio). Regla: nunca se le pasan al modelo
+las herramientas de un servidor tal cual; cada integración declara una lista cerrada de
+permitidas y las envuelve en herramientas propias con su nivel de permiso.
+
+`integrations/rea.py`: REA (morluto/rea, MIT) expone 229 herramientas, varias capaces de
+ejecutar o inyectar código (Frida, GDB, escenarios). Moni solo permite 6 estáticas
+(`inspect_pe_imports`, `inspect_pe_certificates`, `inspect_pe_load_config`,
+`inspect_managed_artifact`, `inspect_go_binary`, `inspect_desktop_application`) y resume las
+importaciones en capacidades en lenguaje sencillo (internet, teclado, pantalla, registro,
+memoria de otros programas...). REA se instala la primera vez con `npm install --prefix
+data/herramientas/rea rea-agents@6.8.0` y necesita Node.js 22+. Herramienta
+`explicar_programa`, skill `explicar-programa`.
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.
