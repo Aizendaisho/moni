@@ -14,6 +14,7 @@ export type CoreMessage =
   | { type: "history"; conversation_id: number; messages: { role: "user" | "assistant"; text: string }[] }
   | { type: "token"; text: string } // fragmento de la respuesta en streaming
   | { type: "tool"; name: string; label: string; status: "start" | "end"; ok?: boolean }
+  | { type: "memory"; count: number } // encontró recuerdos relevantes en su memoria
   | { type: "confirm"; id: string; question: string } // pedir Sí/No antes de una acción
   | { type: "confirm_closed"; id: string } // la pregunta caducó
   | { type: "done" } // terminó la respuesta

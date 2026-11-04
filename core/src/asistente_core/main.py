@@ -8,6 +8,7 @@ Protocolo (JSON):
   núcleo → app   {"type": "history", "messages": [...]}      al conectar o al crear conversación
                  {"type": "token", "text": ...}               fragmento de respuesta
                  {"type": "tool", ...}                        Moni usa una herramienta
+                 {"type": "memory", "count": n}               encontró n recuerdos relevantes
                  {"type": "confirm", "id", "question"}        pedir Sí/No antes de una acción
                  {"type": "confirm_closed", "id"}             la pregunta caducó (sin respuesta)
                  {"type": "done"} / {"type": "error", "message": ...}
@@ -23,8 +24,9 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from . import tools  # noqa: F401 - registra las herramientas
-from .agent.loop import Turno, responder
-from .agent.prompt import mensaje_sistema
+from .agent.loop import Turno, ejecutar_herramienta, responder
+from .agent.prompt import mensaje_recuerdos, mensaje_sistema
+from .agent.router import necesita_internet
 from .config import settings
 from .memory import bitacora, conocimiento
 from .memory.historial import Historial
@@ -94,6 +96,60 @@ class Sesion:
         )
 
 
+async def _recordar(texto: str) -> list[dict]:
+    """Recuerdos relevantes para el mensaje (vacío si no hay o si la memoria falla)."""
+    memoria = conocimiento.actual()
+    if memoria is None or len(texto.strip()) < 4:
+        return []
+    try:
+        return await asyncio.to_thread(memoria.buscar, texto, settings.memory_auto_limit)
+    except Exception:
+        log.exception("No se pudo consultar la memoria")
+        return []
+
+
+def _ultima_respuesta(mensajes: list[dict]) -> str:
+    for m in reversed(mensajes[:-1]):
+        if m["role"] == "assistant" and m.get("content"):
+            return m["content"]
+    return ""
+
+
+async def _investigar_antes(ws: WebSocket, pregunta: str) -> list[dict]:
+    """Ejecuta `investigar` y lo devuelve como si Moni hubiera llamado la herramienta."""
+    args = {"pregunta": pregunta}
+    await ws.send_json(
+        {
+            "type": "tool",
+            "name": "investigar",
+            "label": "Investigando en internet",
+            "status": "start",
+        }
+    )
+    ok, resultado = await ejecutar_herramienta("investigar", args)
+    await ws.send_json(
+        {
+            "type": "tool",
+            "name": "investigar",
+            "label": "Investigando en internet",
+            "status": "end",
+            "ok": ok,
+        }
+    )
+    if not ok:
+        resultado = (
+            f"No se pudo investigar en internet: {resultado}. Díselo al usuario con honestidad."
+        )
+    return [
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{"function": {"name": "investigar", "arguments": args}}],
+        },
+        {"role": "tool", "tool_name": "investigar", "content": resultado},
+    ]
+
+
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket) -> None:
     await ws.accept()
@@ -111,8 +167,29 @@ async def ws_endpoint(ws: WebSocket) -> None:
             if tipo != "chat":
                 continue
 
-            historial.agregar(conv, {"role": "user", "content": str(msg.get("text", ""))})
-            contexto = [mensaje_sistema(), *historial.mensajes(conv, settings.history_limit)]
+            texto = str(msg.get("text", ""))
+            historial.agregar(conv, {"role": "user", "content": texto})
+            mensajes = historial.mensajes(conv, settings.history_limit)
+            recuerdos = await _recordar(texto)
+            extra = mensaje_recuerdos(recuerdos)
+            # Los recuerdos van justo antes del último mensaje del usuario, donde más pesan.
+            contexto = [
+                mensaje_sistema(),
+                *mensajes[:-1],
+                *([extra] if extra else []),
+                mensajes[-1],
+            ]
+            if recuerdos:
+                await ws.send_json({"type": "memory", "count": len(recuerdos)})
+            elif settings.auto_research and await necesita_internet(
+                texto, _ultima_respuesta(mensajes)
+            ):
+                # Sin recuerdos y la pregunta necesita datos: el núcleo investiga por su cuenta
+                # (el modelo pequeño a veces inventa en vez de usar la herramienta).
+                previos = await _investigar_antes(ws, texto)
+                contexto.extend(previos)
+                for m in previos:
+                    historial.agregar(conv, m)
             turno = Turno()
             try:
                 async for evento in responder(contexto, turno, confirmar=sesion.confirmar):

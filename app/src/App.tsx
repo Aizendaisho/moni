@@ -35,6 +35,9 @@ export default function App() {
         case "tool":
           setTool(msg.status === "start" ? msg.label : null);
           break;
+        case "memory":
+          setTool(`Usando lo que recuerdo (${msg.count})`);
+          break;
         case "confirm":
           setConfirm({ id: msg.id, question: msg.question });
           break;
@@ -129,7 +132,7 @@ export default function App() {
         ))}
         {(tool || waiting) && (
           <div className="w-fit animate-pulse rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-400">
-            {tool ? `🔧 ${tool}…` : "Moni está pensando…"}
+            {tool ? `${tool.startsWith("Usando lo que") ? "🧠" : "🔧"} ${tool}…` : "Moni está pensando…"}
           </div>
         )}
         <div ref={bottom} />

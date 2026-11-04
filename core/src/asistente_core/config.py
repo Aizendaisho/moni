@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     llm_think: bool = False  # True solo con modelos que razonan (p. ej. qwen3:4b)
     llm_num_ctx: int = 6144  # tokens de contexto; más contexto = más VRAM
     history_limit: int = 30  # mensajes del historial que se envían al modelo
+    auto_research: bool = True  # el núcleo decide si investigar antes de responder
+    memory_auto_limit: int = 4  # recuerdos que se añaden solos a cada mensaje
     web_region: str = "es-es"  # región para los resultados de búsqueda
     vision_model: str = "moondream"
     embed_model: str = "nomic-embed-text"

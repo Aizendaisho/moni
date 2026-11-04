@@ -395,3 +395,76 @@ def test_investigar_busca_lee_y_responde_con_fuentes(monkeypatch):
         assert "1605" in r["fragmentos"][0]["texto"]
     finally:
         cmod.usar(None)
+
+
+def test_recuerdos_se_inyectan_antes_del_mensaje(monkeypatch):
+    """El núcleo consulta la memoria solo y pasa los recuerdos al modelo."""
+    import asistente_core.main as m
+    from asistente_core.memory import conocimiento as cmod
+
+    c = cmod.Conocimiento(":memory:", _embed_falso)
+    c.guardar(
+        "Juan de la Cuesta",
+        "La imprenta de Juan de la Cuesta estaba en la calle de Atocha, en Madrid.",
+        url="https://es.wikipedia.org/wiki/Juan_de_la_Cuesta",
+    )
+    cmod.usar(c)
+    monkeypatch.setattr(cmod, "UMBRAL", 0.1)
+    vistos = []
+
+    async def falso_stream(mensajes, tools):
+        vistos.append(list(mensajes))
+        yield _parte("En la calle de Atocha.")
+
+    real = m.responder
+    monkeypatch.setattr(
+        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+    )
+    monkeypatch.setattr(m, "historial", Historial(":memory:"))
+    try:
+        with TestClient(m.app).websocket_connect("/ws") as ws:
+            ws.receive_json()  # history
+            ws.send_json({"type": "chat", "text": "¿En qué calle estaba la imprenta del Quijote?"})
+            assert ws.receive_json() == {"type": "memory", "count": 1}
+            assert ws.receive_json()["type"] == "token"
+            assert ws.receive_json()["type"] == "done"
+        ctx = vistos[0]
+        assert ctx[-1]["role"] == "user"
+        assert ctx[-2]["role"] == "system" and "Atocha" in ctx[-2]["content"]
+    finally:
+        cmod.usar(None)
+
+
+def test_nucleo_investiga_si_hace_falta(monkeypatch):
+    """Sin recuerdos y con una pregunta de datos, el núcleo investiga antes de que responda Moni."""
+    import asistente_core.main as m
+
+    vistos = []
+
+    async def falso_stream(mensajes, tools):
+        vistos.append(list(mensajes))
+        yield _parte("Es la 4.5.")
+
+    async def siempre_si(texto, anterior=""):
+        return True
+
+    async def falso_ejecutar(nombre, args, confirmar=None):
+        return True, '{"fragmentos": [{"fuente": "Godot", "texto": "Godot 4.5 salió..."}]}'
+
+    real = m.responder
+    monkeypatch.setattr(
+        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+    )
+    monkeypatch.setattr(m, "necesita_internet", siempre_si)
+    monkeypatch.setattr(m, "ejecutar_herramienta", falso_ejecutar)
+    monkeypatch.setattr(m, "historial", Historial(":memory:"))
+    with TestClient(m.app).websocket_connect("/ws") as ws:
+        ws.receive_json()  # history
+        ws.send_json({"type": "chat", "text": "¿Cuál es la última versión de Godot?"})
+        assert ws.receive_json()["status"] == "start"
+        assert ws.receive_json()["status"] == "end"
+        assert ws.receive_json()["type"] == "token"
+        assert ws.receive_json()["type"] == "done"
+    ctx = vistos[0]
+    assert [x["role"] for x in ctx[-3:]] == ["user", "assistant", "tool"]
+    assert "Godot 4.5" in ctx[-1]["content"]
