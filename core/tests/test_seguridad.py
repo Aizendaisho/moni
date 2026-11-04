@@ -600,3 +600,87 @@ def test_sin_descargar_avisa(tmp_path):
 
     with pytest.raises(ValueError, match="actualizar_conocimiento_de_seguridad"):
         saber.Saber(tmp_path).buscar_attack("phishing")
+
+
+# ---------------------------------------------------------------- eventos de Windows (Hayabusa)
+
+
+def test_resumen_de_alertas_de_hayabusa():
+    from asistente_core.seguridad import eventos
+
+    def alerta(titulo, nivel, ts, cmd="x"):
+        return json.dumps(
+            {
+                "Timestamp": ts,
+                "RuleTitle": titulo,
+                "Level": nivel,
+                "Channel": "Sysmon",
+                "Details": {"Cmdline": cmd, "LGUID": "no-importa"},
+            }
+        )
+
+    lineas = [
+        alerta("PowerShell Base64", "med", "2026-11-01 10:00:00.000 -04:00"),
+        alerta("Mshta Remote", "high", "2026-11-02 09:00:00.000 -04:00", "mshta http://malo"),
+        alerta("PowerShell Base64", "med", "2026-11-03 10:00:00.000 -04:00"),
+        alerta("Log Cleared", "crit", "2026-11-03 11:00:00.000 -04:00"),
+        "no es json",
+    ]
+    r = eventos.resumir(lineas)
+    assert r["total_alertas"] == 4
+    assert r["por_nivel"] == {"crítico": 1, "alto": 1, "medio": 2}
+    assert [a["alerta"] for a in r["alertas"]] == [
+        "Log Cleared",
+        "Mshta Remote",
+        "PowerShell Base64",
+    ]
+    ps = r["alertas"][2]
+    assert (
+        ps["veces"] == 2
+        and ps["primera"] == "2026-11-01 10:00"
+        and ps["ultima"] == "2026-11-03 10:00"
+    )
+    assert r["alertas"][1]["ejemplo"] == "Cmdline: mshta http://malo"
+    assert eventos.resumir([])["nota"].startswith("Sin alertas")
+
+
+def test_argumentos_de_hayabusa(tmp_path):
+    from asistente_core.seguridad import eventos
+
+    h = eventos.Hayabusa(tmp_path)
+    a = h.argumentos(tmp_path / "o.jsonl", 7, tmp_path / "logs")
+    assert a[:3] == ["dfir-timeline", "-d", str(tmp_path / "logs")]
+    assert "-w" in a and a[a.index("-m") + 1] == "medium" and a[-1] == "7d"
+    assert h.argumentos(tmp_path / "o.jsonl", 0, None)[1] == "-l"  # en vivo; mínimo 1 día
+    assert h.argumentos(tmp_path / "o.jsonl", 0, None)[-1] == "1d"
+
+
+def _zip_hayabusa(nombres):
+    import io
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for n in nombres:
+            z.writestr(n, b"x")
+    return buf.getvalue()
+
+
+def test_instalar_hayabusa_y_firma(tmp_path):
+    from asistente_core.seguridad import eventos
+
+    contenido = _zip_hayabusa(
+        ["hayabusa-4.3.1-win-x64.exe", "encoded_rules.yml", "../../fuera.txt"]
+    )
+    cliente = httpx.Client(
+        transport=httpx.MockTransport(lambda req: httpx.Response(200, content=contenido))
+    )
+    h = eventos.Hayabusa(tmp_path / "h")
+    h.instalar(cliente, verificar_firma=lambda exe: "Valid")
+    assert h.instalado()
+    assert not (tmp_path / "fuera.txt").exists()  # sin rutas que escapen de la carpeta
+    assert (tmp_path / "h" / "fuera.txt").exists()
+
+    malo = eventos.Hayabusa(tmp_path / "m")
+    with pytest.raises(ValueError, match="firma"):
+        malo.instalar(cliente, verificar_firma=lambda exe: "HashMismatch")
+    assert not (tmp_path / "m").exists()  # se borra lo descargado

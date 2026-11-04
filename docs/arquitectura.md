@@ -136,6 +136,17 @@ permite abusar cada programa (nunca los comandos). Herramientas: `consultar_atta
 alias o palabras, con atajos para conceptos comunes como ransomware o keylogger),
 `consultar_programa_windows` y `actualizar_conocimiento_de_seguridad`. Skill `explicar-amenaza`.
 
+## Registros de eventos (Hayabusa)
+
+`seguridad/eventos.py`: la primera vez descarga el paquete "live-response" de Hayabusa 4.3.1
+(reglas codificadas, sin falsos positivos del antivirus) en `data/herramientas/hayabusa` y
+comprueba su firma digital. Sin administrador: exporta con `wevtutil` los canales legibles
+(Sistema, Aplicación, PowerShell, Defender, Tareas programadas, BITS, WMI) de los últimos N días
+y Hayabusa los analiza con nivel mínimo "medium". Modo completo: Hayabusa en vivo como
+administrador (`Start-Process -Verb RunAs`, Windows muestra la ventana UAC). Las alertas se
+agrupan por regla y se ordenan por gravedad. Herramienta `revisar_eventos_de_windows`, skill
+`revisar-eventos`.
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.

@@ -37,6 +37,7 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | MalwareBazaar de abuse.ch (servicio, opcional) | ¿es malware conocido? (solo el hash) | gratuito con clave |
 | MITRE ATT&CK (datos, se descargan en la PC) | conocimiento de ataques | términos de uso de MITRE: uso libre con atribución |
 | LOLBAS (datos, se descargan en la PC) | programas de Windows abusables | GPL-3.0 (no se incluye en el repo; sin los comandos de abuso) |
+| Hayabusa 4.3.1 (se descarga en la PC) | revisar registros de eventos | AGPL-3.0; reglas DRL 1.1 |
 | Reglas YARA de la comunidad (opcional, `data/reglas-yara`) | más detecciones | según cada repo; signature-base usa DRL 1.1 |
 
 ## Modelos

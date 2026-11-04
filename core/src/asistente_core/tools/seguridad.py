@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..config import settings
 from ..permissions.policy import Nivel
-from ..seguridad import analisis, cuarentena, equipo, saber
+from ..seguridad import analisis, cuarentena, equipo, eventos, saber
 from .registry import herramienta
 
 _reglas = analisis.Reglas([analisis.REGLAS_MONI, settings.data_dir / "reglas-yara"])
@@ -312,3 +312,26 @@ def consultar_programa_windows(programa: str) -> dict:
 def actualizar_conocimiento_de_seguridad() -> dict:
     """Descarga de nuevo MITRE ATT&CK y LOLBAS (unos 55 MB) para tener la información de ataques al día. Se hace sola cada 30 días."""
     return conocimiento_seguridad.actualizar()
+
+
+# ---------------------------------------------------------------- registros de eventos
+
+hayabusa = eventos.Hayabusa(settings.data_dir / "herramientas" / "hayabusa")
+
+
+def _estado_firma(ruta: Path) -> str | None:
+    f = analisis.firma(ruta)
+    return f.get("estado") if f else None
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Revisando los registros de eventos")
+def revisar_eventos_de_windows(dias: int = 7, completo: bool = False) -> dict:
+    """Busca señales de ataques en los registros de eventos de Windows con Hayabusa (más de 4000 reglas de detección): PowerShell sospechoso, servicios o tareas creadas por malware, registros borrados, etc. Solo lee. La primera vez descarga Hayabusa (unos 20 MB).
+
+    Args:
+      dias: Cuántos días hacia atrás revisar (1 a 30).
+      completo: True solo si el usuario pide la revisión completa: incluye el registro de Seguridad y Windows le pedirá permiso de administrador.
+    """
+    if not hayabusa.instalado():
+        hayabusa.instalar(verificar_firma=_estado_firma)
+    return hayabusa.escanear(dias=max(1, min(int(dias), 30)), completo=bool(completo))
