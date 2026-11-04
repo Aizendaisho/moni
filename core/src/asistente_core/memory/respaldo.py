@@ -114,6 +114,14 @@ class CarpetaLocal:
             (self.carpeta / n).unlink(missing_ok=True)
 
 
+def _cabeceras(clave: str) -> dict[str, str]:
+    """Las claves nuevas de Supabase (sb_secret_...) van solo en `apikey`; las antiguas
+    (service_role, un JWT) también como Bearer."""
+    if clave.startswith("sb_secret_"):
+        return {"apikey": clave}
+    return {"Authorization": f"Bearer {clave}", "apikey": clave}
+
+
 class SupabaseStorage:
     """Bucket privado de Supabase Storage, usando su API REST."""
 
@@ -125,7 +133,7 @@ class SupabaseStorage:
         self._bucket = bucket
         self._http = httpx.Client(
             base_url=url.rstrip("/") + "/storage/v1",
-            headers={"Authorization": f"Bearer {clave}", "apikey": clave},
+            headers=_cabeceras(clave),
             timeout=60,
             transport=transport,
         )

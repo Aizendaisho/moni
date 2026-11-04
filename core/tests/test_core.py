@@ -567,3 +567,10 @@ def test_supabase_storage_con_api_simulada(tmp_path):
     assert res.destinos_ok == ["Supabase"]
     assert nube.listar() == [res.nombre]
     assert descifrar(nube.descargar(res.nombre), "frase").startswith(b"SQLite format 3")
+
+
+def test_cabeceras_supabase_claves_nuevas_y_antiguas():
+    from asistente_core.memory.respaldo import _cabeceras
+
+    assert _cabeceras("sb_secret_abc") == {"apikey": "sb_secret_abc"}
+    assert _cabeceras("eyJhbGciOi.x.y")["Authorization"] == "Bearer eyJhbGciOi.x.y"
