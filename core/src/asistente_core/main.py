@@ -19,6 +19,9 @@ Arranque:  uv run asistente-core
 import asyncio
 import logging
 import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -28,11 +31,10 @@ from .agent.loop import Turno, ejecutar_herramienta, responder
 from .agent.prompt import mensaje_recuerdos, mensaje_sistema
 from .agent.router import necesita_internet
 from .config import settings
-from .memory import bitacora, conocimiento
+from .memory import bitacora, conocimiento, respaldo
 from .memory.historial import Historial
 
 log = logging.getLogger("moni")
-app = FastAPI(title="Moni · núcleo", version="0.4.0")
 historial = Historial(settings.data_dir / "moni.db")
 bitacora.usar(bitacora.Bitacora(settings.data_dir / "moni.db"))
 conocimiento.usar(
@@ -41,6 +43,52 @@ conocimiento.usar(
         conocimiento.embedder_ollama(settings.ollama_host, settings.embed_model),
     )
 )
+
+
+def _configurar_respaldo() -> respaldo.Respaldo | None:
+    if not settings.backup_passphrase:
+        log.warning(
+            "Copias de seguridad desactivadas: falta ASISTENTE_BACKUP_PASSPHRASE en core/.env"
+        )
+        return None
+    destinos: list = []
+    if settings.backup_local_dir:
+        destinos.append(respaldo.CarpetaLocal(Path(settings.backup_local_dir)))
+    if settings.supabase_url and settings.supabase_service_key:
+        destinos.append(
+            respaldo.SupabaseStorage(
+                settings.supabase_url, settings.supabase_service_key, settings.supabase_bucket
+            )
+        )
+    return respaldo.Respaldo(settings.data_dir / "moni.db", settings.backup_passphrase, destinos)
+
+
+respaldo.usar(_configurar_respaldo())
+
+
+async def _copias_automaticas() -> None:
+    """Hace una copia al arrancar si la última es vieja, y vuelve a revisar cada 30 minutos."""
+    intervalo = timedelta(hours=settings.backup_interval_hours)
+    while True:
+        r = respaldo.actual()
+        if r is not None:
+            try:
+                fecha, _ = await asyncio.to_thread(r.ultima)
+                if fecha is None or datetime.now() - fecha >= intervalo:
+                    await asyncio.to_thread(r.hacer)
+            except Exception:
+                log.exception("Falló la copia automática")
+        await asyncio.sleep(30 * 60)
+
+
+@asynccontextmanager
+async def ciclo_de_vida(_app: FastAPI):
+    tarea = asyncio.create_task(_copias_automaticas())
+    yield
+    tarea.cancel()
+
+
+app = FastAPI(title="Moni · núcleo", version="0.5.0", lifespan=ciclo_de_vida)
 
 ESPERA_CONFIRMACION = 60  # segundos; sin respuesta cuenta como "no"
 

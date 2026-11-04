@@ -90,6 +90,10 @@ Además, `tools/apps.py` tiene una lista de procesos protegidos (Windows, Ollama
 - Seguridad: solo http/https y nunca direcciones locales o privadas (también dentro del navegador), y el texto de las páginas se entrega al modelo marcado como información, no instrucciones.
 - Privacidad: las búsquedas y las páginas que se abren salen a internet; la app lo muestra con "Buscando en internet…" / "Leyendo página…". La memoria se queda en la PC.
 
+## Copias de seguridad
+
+`memory/respaldo.py`: copia consistente de `data/moni.db` (API de backup de SQLite), comprimida y cifrada en la PC con AES-256-GCM (clave derivada de la frase secreta con scrypt). Destinos: carpeta local (`ASISTENTE_BACKUP_LOCAL_DIR`, por defecto `data/respaldos`) y un bucket privado de Supabase Storage. Automática al arrancar si la última tiene más de 24 h, y se revisa cada 30 min. Retención: 7 diarias + 4 semanales. Supabase solo ve archivos cifrados. Restaurar: `scripts\restaurar.bat` (con el núcleo cerrado), que guarda antes la memoria actual y verifica la integridad de la copia.
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.

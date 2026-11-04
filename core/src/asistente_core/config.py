@@ -35,5 +35,13 @@ class Settings(BaseSettings):
 
     data_dir: Path = RAIZ / "data"  # historial, memoria y bitácora (ignorado por git)
 
+    # Copias de seguridad cifradas (memory/respaldo.py). Sin frase secreta, no se hacen.
+    backup_passphrase: str = ""  # ¡apúntala fuera de la PC! sin ella no se puede restaurar
+    backup_interval_hours: float = 24
+    backup_local_dir: Path | None = RAIZ / "data" / "respaldos"  # mejor en otro disco
+    supabase_url: str = ""  # https://<proyecto>.supabase.co
+    supabase_service_key: str = ""  # clave service_role; solo en core/.env, nunca en git
+    supabase_bucket: str = "moni-respaldos"
+
 
 settings = Settings()

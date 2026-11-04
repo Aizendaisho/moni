@@ -468,3 +468,102 @@ def test_nucleo_investiga_si_hace_falta(monkeypatch):
     ctx = vistos[0]
     assert [x["role"] for x in ctx[-3:]] == ["user", "assistant", "tool"]
     assert "Godot 4.5" in ctx[-1]["content"]
+
+
+# ---------------------------------------------------------------- copias de seguridad
+
+
+def _db_de_prueba(ruta):
+    import sqlite3
+
+    c = sqlite3.connect(ruta)
+    c.execute("CREATE TABLE t (x TEXT)")
+    c.execute("INSERT INTO t VALUES ('recuerdo importante')")
+    c.commit()
+    return c
+
+
+def test_cifrado_ida_y_vuelta():
+    import pytest
+
+    from asistente_core.memory.respaldo import cifrar, descifrar
+
+    blob = cifrar(b"datos de Moni", "frase correcta")
+    assert b"datos de Moni" not in blob
+    assert descifrar(blob, "frase correcta") == b"datos de Moni"
+    with pytest.raises(ValueError):
+        descifrar(blob, "frase equivocada")
+
+
+def test_retencion_7_diarias_4_semanales():
+    from datetime import datetime, timedelta
+
+    from asistente_core.memory.respaldo import a_conservar
+
+    base = datetime(2026, 11, 4, 10, 0, 0)
+    nombres = [
+        f"moni-{(base - timedelta(days=d)).strftime('%Y%m%d-%H%M%S')}.db.gz.enc" for d in range(60)
+    ]
+    nombres.append(
+        f"moni-{(base - timedelta(hours=2)).strftime('%Y%m%d-%H%M%S')}.db.gz.enc"
+    )  # 2 hoy
+    quedan = a_conservar(nombres)
+    assert len(quedan) == 11  # 7 días + 4 semanas
+    assert nombres[0] in quedan  # la más nueva de hoy
+    assert nombres[-1] not in quedan  # la de hoy más vieja sobra
+
+
+def test_respaldo_local_completo(tmp_path):
+    import sqlite3
+
+    from asistente_core.memory.respaldo import CarpetaLocal, Respaldo, descifrar
+
+    db = tmp_path / "moni.db"
+    conn = _db_de_prueba(db)  # abierta mientras se copia, como en la vida real
+    r = Respaldo(db, "frase", [CarpetaLocal(tmp_path / "respaldos")])
+    res = r.hacer()
+    conn.close()
+    assert res.destinos_ok == ["carpeta local"] and not res.errores
+    fecha, _ = r.ultima()
+    assert fecha is not None
+    restaurada = tmp_path / "restaurada.db"
+    restaurada.write_bytes(descifrar((tmp_path / "respaldos" / res.nombre).read_bytes(), "frase"))
+    assert (
+        sqlite3.connect(restaurada).execute("SELECT x FROM t").fetchone()[0]
+        == "recuerdo importante"
+    )
+
+
+def test_supabase_storage_con_api_simulada(tmp_path):
+    import httpx
+
+    from asistente_core.memory.respaldo import Respaldo, SupabaseStorage, descifrar
+
+    guardado: dict[str, bytes] = {}
+
+    def api(req: httpx.Request) -> httpx.Response:
+        assert req.headers["authorization"] == "Bearer clave-secreta"
+        ruta = req.url.path
+        if req.method == "POST" and ruta.startswith("/storage/v1/object/list/moni-respaldos"):
+            return httpx.Response(200, json=[{"name": n} for n in guardado])
+        if req.method == "POST" and ruta.startswith("/storage/v1/object/moni-respaldos/"):
+            guardado[ruta.rsplit("/", 1)[1]] = req.content
+            return httpx.Response(200, json={"Key": ruta})
+        if req.method == "GET":
+            return httpx.Response(200, content=guardado[ruta.rsplit("/", 1)[1]])
+        if req.method == "DELETE":
+            return httpx.Response(200, json=[])
+        return httpx.Response(404)
+
+    nube = SupabaseStorage(
+        "https://x.supabase.co",
+        "clave-secreta",
+        "moni-respaldos",
+        transport=httpx.MockTransport(api),
+    )
+    db = tmp_path / "moni.db"
+    _db_de_prueba(db).close()
+    res = Respaldo(db, "frase", [nube]).hacer()
+    assert res.destinos_ok == ["Supabase"]
+    assert nube.listar() == [res.nombre]
+    assert descifrar(nube.descargar(res.nombre), "frase").startswith(b"SQLite format 3")

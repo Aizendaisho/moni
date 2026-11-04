@@ -28,6 +28,8 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | trafilatura | extraer texto de páginas | Apache-2.0 |
 | httpx | descargas | BSD-3 |
 | NumPy | búsqueda por similitud | BSD-3 |
+| cryptography | cifrado de las copias | Apache-2.0 / BSD-3 |
+| Supabase (servicio) | copia en la nube | Apache-2.0 (se puede autoalojar) |
 
 ## Modelos
 

@@ -51,6 +51,7 @@ name = "asistente-core"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "ddgs" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -110,6 +111,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asistente-core", extras = ["voz", "vision", "memoria", "integraciones"], marker = "extra == 'todo'" },
+    { name = "cryptography", specifier = ">=43" },
     { name = "ddgs", specifier = ">=9" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "faster-whisper", marker = "extra == 'voz'", specifier = ">=1.0" },
