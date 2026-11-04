@@ -43,5 +43,9 @@ class Settings(BaseSettings):
     supabase_service_key: str = ""  # clave service_role; solo en core/.env, nunca en git
     supabase_bucket: str = "moni-respaldos"
 
+    # Seguridad (revisar archivos)
+    security_hash_lookup: bool = True  # consultar el hash (nunca el archivo) en bases públicas
+    abusech_auth_key: str = ""  # opcional: clave gratuita de abuse.ch para MalwareBazaar
+
 
 settings = Settings()

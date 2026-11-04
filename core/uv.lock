@@ -57,12 +57,15 @@ dependencies = [
     { name = "httpx" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "oletools" },
     { name = "ollama" },
+    { name = "pefile" },
     { name = "psutil" },
     { name = "pydantic-settings" },
     { name = "pywinauto", marker = "sys_platform == 'win32'" },
     { name = "trafilatura" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "yara-x" },
 ]
 
 [package.optional-dependencies]
@@ -120,9 +123,11 @@ requires-dist = [
     { name = "mediapipe", marker = "extra == 'vision'", specifier = ">=0.10.14" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "numpy", marker = "extra == 'voz'", specifier = ">=1.26" },
+    { name = "oletools", specifier = ">=0.60" },
     { name = "ollama", specifier = ">=0.4" },
     { name = "opencv-python", marker = "extra == 'vision'", specifier = ">=4.10" },
     { name = "openwakeword", marker = "extra == 'voz'", specifier = ">=0.6" },
+    { name = "pefile", specifier = ">=2024.8.26" },
     { name = "piper-tts", marker = "extra == 'voz'", specifier = ">=1.2" },
     { name = "playwright", marker = "extra == 'integraciones'", specifier = ">=1.47" },
     { name = "psutil", specifier = ">=6.0" },
@@ -133,6 +138,7 @@ requires-dist = [
     { name = "sqlite-vec", marker = "extra == 'memoria'", specifier = ">=0.1.6" },
     { name = "trafilatura", specifier = ">=2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+    { name = "yara-x", specifier = ">=1.0" },
 ]
 provides-extras = ["voz", "vision", "memoria", "integraciones", "todo"]
 
@@ -328,6 +334,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
+]
+
+[[package]]
+name = "colorclass"
+version = "2.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/1a/31ff00a33569a3b59d65bbdc445c73e12f92ad28195b7ace299f68b9af70/colorclass-2.2.2.tar.gz", hash = "sha256:6d4fe287766166a98ca7bc6f6312daf04a0481b1eda43e7173484051c0ab4366", size = 16709, upload-time = "2021-12-09T00:41:35.661Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/b6/daf3e2976932da4ed3579cff7a30a53d22ea9323ee4f0d8e43be60454897/colorclass-2.2.2-py2.py3-none-any.whl", hash = "sha256:6f10c273a0ef7a1150b1120b6095cbdd68e5cf36dfd5d0fc957a2500bbf99a55", size = 18995, upload-time = "2021-12-09T00:41:34.653Z" },
 ]
 
 [[package]]
@@ -601,6 +616,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ec/c4/165b9b1581813063847349421c014a8ccc346222a58b3233ba168bf257c1/ddgs-9.16.1.tar.gz", hash = "sha256:0cde5682e5801b838915bcb1d12ade8f2e1ec11763b88d0035a1faa0662b517a", size = 38033, upload-time = "2026-10-23T21:16:42.709Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/5f/9388344fe821102459a73d2d49ab5e6769b3bab3f17ecf79fb1f736cf1d6/ddgs-9.16.1-py3-none-any.whl", hash = "sha256:9ac0b3c19d865a9bfbf7bc7cc8090bd43d1e7adfb083a017bbece360a22e21b6", size = 47695, upload-time = "2026-10-23T21:16:41.413Z" },
+]
+
+[[package]]
+name = "easygui"
+version = "0.98.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/ad/e35f7a30272d322be09dc98592d2f55d27cc933a7fde8baccbbeb2bd9409/easygui-0.98.3.tar.gz", hash = "sha256:d653ff79ee1f42f63b5a090f2f98ce02335d86ad8963b3ce2661805cafe99a04", size = 85583, upload-time = "2022-04-01T13:15:50.752Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/a7/b276ff776533b423710a285c8168b52551cb2ab0855443131fdc7fd8c16f/easygui-0.98.3-py2.py3-none-any.whl", hash = "sha256:33498710c68b5376b459cd3fc48d1d1f33822139eb3ed01defbc0528326da3ba", size = 92655, upload-time = "2022-04-01T13:15:49.568Z" },
 ]
 
 [[package]]
@@ -1218,6 +1242,19 @@ wheels = [
 ]
 
 [[package]]
+name = "msoffcrypto-tool"
+version = "6.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "olefile" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/f3/4256235af3e868097dc270627159c672a8d00573833c91669526d025c810/msoffcrypto_tool-6.1.0.tar.gz", hash = "sha256:e2d7dfca6ff69cf3da0a7225329e6c26febb4360f329db4937d6ee527fdd2569", size = 41025, upload-time = "2026-11-03T18:19:38.15Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/9e/d6a7b1e343d8cea4ac63a1b672ca7eed491ef5fce1813308942d96fca8e1/msoffcrypto_tool-6.1.0-py3-none-any.whl", hash = "sha256:32ced1299858018e6c1ca3d0007127335dbcff90e777a77eb52f92d5112869f8", size = 49366, upload-time = "2026-11-03T18:19:39.431Z" },
+]
+
+[[package]]
 name = "narwhals"
 version = "2.28.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1468,6 +1505,32 @@ wheels = [
 ]
 
 [[package]]
+name = "olefile"
+version = "0.47"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/1b/077b508e3e500e1629d366249c3ccb32f95e50258b231705c09e3c7a4366/olefile-0.47.zip", hash = "sha256:599383381a0bf3dfbd932ca0ca6515acd174ed48870cbf7fee123d698c192c1c", size = 112240, upload-time = "2023-12-01T16:22:53.025Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/d3/b64c356a907242d719fc668b71befd73324e47ab46c8ebbbede252c154b2/olefile-0.47-py2.py3-none-any.whl", hash = "sha256:543c7da2a7adadf21214938bb79c83ea12b473a4b6ee4ad4bf854e7715e13d1f", size = 114565, upload-time = "2023-12-01T16:22:51.518Z" },
+]
+
+[[package]]
+name = "oletools"
+version = "0.60.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorclass" },
+    { name = "easygui" },
+    { name = "msoffcrypto-tool", marker = "(platform_python_implementation != 'PyPy' and sys_platform == 'darwin') or (platform_python_implementation != 'PyPy' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "olefile" },
+    { name = "pcodedmp" },
+    { name = "pyparsing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/2f/037f40e44706d542b94a2312ccc33ee2701ebfc9a83b46b55263d49ce55a/oletools-0.60.2.zip", hash = "sha256:ad452099f4695ffd8855113f453348200d195ee9fa341a09e197d66ee7e0b2c3", size = 3433750, upload-time = "2024-07-02T14:50:38.242Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/ff/05257b7183279b80ecec6333744de23f48f0faeeba46c93e6d13ce835515/oletools-0.60.2-py2.py3-none-any.whl", hash = "sha256:72ad8bd748fd0c4e7b5b4733af770d11543ebb2bf2697455f99f975fcd50cc96", size = 989449, upload-time = "2024-07-02T14:50:29.122Z" },
+]
+
+[[package]]
 name = "ollama"
 version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1590,6 +1653,28 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fa/2a/52a8da6fe965dea6192eb716b357558e103aea0a1e9a8352ad575a8406ca/pathvalidate-3.3.1.tar.gz", hash = "sha256:b18c07212bfead624345bb8e1d6141cdcf15a39736994ea0b94035ad2b1ba177", size = 63262, upload-time = "2025-06-15T09:07:20.736Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9a/70/875f4a23bfc4731703a5835487d0d2fb999031bd415e7d17c0ae615c18b7/pathvalidate-3.3.1-py3-none-any.whl", hash = "sha256:5263baab691f8e1af96092fa5137ee17df5bdfbd6cff1fcac4d6ef4bc2e1735f", size = 24305, upload-time = "2025-06-15T09:07:19.117Z" },
+]
+
+[[package]]
+name = "pcodedmp"
+version = "1.2.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "oletools" },
+    { name = "win-unicode-console", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/20/6d461e29135f474408d0d7f95b2456a9ba245560768ee51b788af10f7429/pcodedmp-1.2.6.tar.gz", hash = "sha256:025f8c809a126f45a082ffa820893e6a8d990d9d7ddb68694b5a9f0a6dbcd955", size = 35549, upload-time = "2019-07-30T18:05:42.516Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/72/b380fb5c89d89c3afafac8cf02a71a45f4f4a4f35531ca949a34683962d1/pcodedmp-1.2.6-py2.py3-none-any.whl", hash = "sha256:4441f7c0ab4cbda27bd4668db3b14f36261d86e5059ce06c0828602cbe1c4278", size = 30939, upload-time = "2019-07-30T18:05:40.483Z" },
+]
+
+[[package]]
+name = "pefile"
+version = "2024.8.26"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/4f/2750f7f6f025a1507cd3b7218691671eecfd0bbebebe8b39aa0fe1d360b8/pefile-2024.8.26.tar.gz", hash = "sha256:3ff6c5d8b43e8c37bb6e6dd5085658d658a7a0bdcd20b6a07b1fcfc1c4e9d632", size = 76008, upload-time = "2024-08-26T20:58:38.155Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/16/12b82f791c7f50ddec566873d5bdd245baa1491bac11d15ffb98aecc8f8b/pefile-2024.8.26-py3-none-any.whl", hash = "sha256:76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f", size = 74766, upload-time = "2024-08-26T21:01:02.632Z" },
 ]
 
 [[package]]
@@ -2662,4 +2747,27 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/29/3a/a05bc57eadcd7e8e072d917888128e6d22e1203984afb21a8da3198982fe/websockets-17.4-pp312-pypy312_pp80-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:868744c68e9342768888c7326604da2228c19bb6946aa46b5f9e1ac32ea8d40b", size = 218356, upload-time = "2026-10-30T15:10:31.432Z" },
     { url = "https://files.pythonhosted.org/packages/b2/49/eed86bfb8863093a82cbaa52c9159be1ce2374d5ace6fe1f8e8031567e7d/websockets-17.4-pp312-pypy312_pp80-win_amd64.whl", hash = "sha256:829bcaa90be8737c132d9515d6a466e8528e3b3d050d3f3466f36ea94d3beb48", size = 306838, upload-time = "2026-10-30T15:10:32.954Z" },
     { url = "https://files.pythonhosted.org/packages/eb/27/9db924cb0dbf22eade78d98fbae77790f9bf6bc729e6ab29aef9d68e4156/websockets-17.4-py3-none-any.whl", hash = "sha256:c6bd2c9781915592b209160d0f017d4c7c82ad53075e6b0c24d2a89299e7f9e9", size = 212900, upload-time = "2026-10-30T15:10:34.482Z" },
+]
+
+[[package]]
+name = "win-unicode-console"
+version = "0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/8d/7aad74930380c8972ab282304a2ff45f3d4927108bb6693cabcc9fc6a099/win_unicode_console-0.5.zip", hash = "sha256:d4142d4d56d46f449d6f00536a73625a871cba040f0bc1a2e305a04578f07d1e", size = 31420, upload-time = "2016-06-25T19:48:54.05Z" }
+
+[[package]]
+name = "yara-x"
+version = "1.22.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/76/905d5207cf9b2c623629d6c44745d8ab9349245aeaa88ff6613d7210e6a8/yara_x-1.22.1-cp39-abi3-macosx_14_0_arm64.whl", hash = "sha256:729c82ef1e74d75f4fd31608cacaab83eac822733e9f2c814449308b38d035ca", size = 8590697, upload-time = "2026-10-26T12:41:46.923Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/18/11412efb9cd3ffb9ad874b0e8808838feff0de6054768fc304be062053ea/yara_x-1.22.1-cp39-abi3-macosx_14_0_x86_64.whl", hash = "sha256:247299622c7d6248585ba23b501ee6ea660e84b7f5dab1af377e2078961b73a4", size = 9367915, upload-time = "2026-10-26T12:41:49.429Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/89/f4e4f4bbf11aaf6635f5aef49579cd9cddcdf02358f8f18c824aaa58ddff/yara_x-1.22.1-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:8ec9a6706d4acf83b8045c1630d5a058180e59da361d38098d8e86ce3e8576b0", size = 10007789, upload-time = "2026-10-26T12:41:51.748Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/bd/6880135578a301a042ef647121e5a8806fcb59a0a7b15835a737734aa198/yara_x-1.22.1-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:5dcb9db77784f0ad62460506923031673e0aadc525c1a5d25e53965a7f91587f", size = 10110314, upload-time = "2026-10-26T12:41:54.134Z" },
+    { url = "https://files.pythonhosted.org/packages/38/98/7444d2f9119d023b8e44917717ea9b9c3cd70630be1064beec36d2ea4fa9/yara_x-1.22.1-cp39-abi3-win_amd64.whl", hash = "sha256:55f26a02669cd0d6588aa03f7befbfb56d319cd23f340e0b8acdbac49261ca8f", size = 8782703, upload-time = "2026-10-26T12:41:56.852Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/0d/74ab24d5fcaef971f86736a833eca4732843c78f95063c9ca57a4410e8ca/yara_x-1.22.1-pp311-pypy311_pp80-macosx_14_0_arm64.whl", hash = "sha256:1bf476071c57ec0914b44e5be845c4cf77616d8bf39157d60150ac24f4ebe85b", size = 8583430, upload-time = "2026-10-26T12:41:59.201Z" },
+    { url = "https://files.pythonhosted.org/packages/27/8f/88e22a91c4a9c252eff3d274bf7fa61d6347ca9cd7d91a67a935cef8c5f3/yara_x-1.22.1-pp311-pypy311_pp80-macosx_14_0_x86_64.whl", hash = "sha256:bfc2c8e152d0ee89af61efd615070cec8648d791cb50556344f207de0ec8cbf6", size = 9367814, upload-time = "2026-10-26T12:42:01.36Z" },
+    { url = "https://files.pythonhosted.org/packages/97/8f/a83762ddcf51abfa51d15a61bd02cd85d0f6265a0bf930ad14aca0a28f69/yara_x-1.22.1-pp311-pypy311_pp80-manylinux_2_28_aarch64.whl", hash = "sha256:0c91b629199a4aaf3393efcd0229056844968990303a8a32b7f53cb5bff0776b", size = 10000651, upload-time = "2026-10-26T12:42:05.152Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/59/481f47a743426974b86b8c99a75a521259cd7ea059d9877f254be67eb3f0/yara_x-1.22.1-pp311-pypy311_pp80-manylinux_2_28_x86_64.whl", hash = "sha256:ec2c2c05adea2f69ec5c9147c3d36b7d6e11932f89b4b1af8ecbed10978d243e", size = 10099113, upload-time = "2026-10-26T12:42:07.539Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/0d/43dc211b78c6d4f9e0f223b7e3ea10d979d539a5f48d1e47dacb51cd3bba/yara_x-1.22.1-pp311-pypy311_pp80-win_amd64.whl", hash = "sha256:b010d2577036d2b970c793e75587362f1dcbf785251b3897ed15e84bc1357159", size = 8466354, upload-time = "2026-10-26T12:42:09.681Z" },
 ]

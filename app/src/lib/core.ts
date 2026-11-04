@@ -15,6 +15,7 @@ export type CoreMessage =
   | { type: "token"; text: string } // fragmento de la respuesta en streaming
   | { type: "tool"; name: string; label: string; status: "start" | "end"; ok?: boolean }
   | { type: "memory"; count: number } // encontró recuerdos relevantes en su memoria
+  | { type: "skill"; name: string; title: string } // aplica una de sus skills
   | { type: "confirm"; id: string; question: string } // pedir Sí/No antes de una acción
   | { type: "confirm_closed"; id: string } // la pregunta caducó
   | { type: "done" } // terminó la respuesta

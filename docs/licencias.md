@@ -30,6 +30,12 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | NumPy | búsqueda por similitud | BSD-3 |
 | cryptography | cifrado de las copias | Apache-2.0 / BSD-3 |
 | Supabase (servicio) | copia en la nube | Apache-2.0 (se puede autoalojar) |
+| YARA-X | reglas de malware | BSD-3 |
+| oletools | macros de Office | BSD-2 |
+| pefile | revisar programas .exe | MIT |
+| CIRCL hashlookup (servicio) | ¿es un archivo conocido? (solo el hash) | servicio público gratuito |
+| MalwareBazaar de abuse.ch (servicio, opcional) | ¿es malware conocido? (solo el hash) | gratuito con clave |
+| Reglas YARA de la comunidad (opcional, `data/reglas-yara`) | más detecciones | según cada repo; signature-base usa DRL 1.1 |
 
 ## Modelos
 

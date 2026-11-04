@@ -9,6 +9,7 @@ Protocolo (JSON):
                  {"type": "token", "text": ...}               fragmento de respuesta
                  {"type": "tool", ...}                        Moni usa una herramienta
                  {"type": "memory", "count": n}               encontró n recuerdos relevantes
+                 {"type": "skill", "name", "title"}           aplica una de sus skills
                  {"type": "confirm", "id", "question"}        pedir Sí/No antes de una acción
                  {"type": "confirm_closed", "id"}             la pregunta caducó (sin respuesta)
                  {"type": "done"} / {"type": "error", "message": ...}
@@ -27,9 +28,10 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from . import tools  # noqa: F401 - registra las herramientas
+from .agent import skills
 from .agent.loop import Turno, ejecutar_herramienta, responder
 from .agent.prompt import mensaje_recuerdos, mensaje_sistema
-from .agent.router import necesita_internet
+from .agent.router import elegir_skill, necesita_internet
 from .config import settings
 from .memory import bitacora, conocimiento, respaldo
 from .memory.historial import Historial
@@ -40,6 +42,13 @@ bitacora.usar(bitacora.Bitacora(settings.data_dir / "moni.db"))
 conocimiento.usar(
     conocimiento.Conocimiento(
         settings.data_dir / "moni.db",
+        conocimiento.embedder_ollama(settings.ollama_host, settings.embed_model),
+    )
+)
+
+skills.usar(
+    skills.Skills(
+        [skills.INCLUIDAS, settings.data_dir / "skills"],
         conocimiento.embedder_ollama(settings.ollama_host, settings.embed_model),
     )
 )
@@ -156,6 +165,18 @@ async def _recordar(texto: str) -> list[dict]:
         return []
 
 
+async def _elegir_skill(texto: str) -> skills.Skill | None:
+    s = skills.actual()
+    if s is None:
+        return None
+    try:
+        candidatas = await asyncio.to_thread(s.candidatas, texto)
+    except Exception:
+        log.exception("No se pudieron comparar las skills")
+        return None
+    return await elegir_skill(texto, candidatas)
+
+
 def _ultima_respuesta(mensajes: list[dict]) -> str:
     for m in reversed(mensajes[:-1]):
         if m["role"] == "assistant" and m.get("content"):
@@ -218,19 +239,18 @@ async def ws_endpoint(ws: WebSocket) -> None:
             texto = str(msg.get("text", ""))
             historial.agregar(conv, {"role": "user", "content": texto})
             mensajes = historial.mensajes(conv, settings.history_limit)
-            recuerdos = await _recordar(texto)
-            extra = mensaje_recuerdos(recuerdos)
-            # Los recuerdos van justo antes del último mensaje del usuario, donde más pesan.
-            contexto = [
-                mensaje_sistema(),
-                *mensajes[:-1],
-                *([extra] if extra else []),
-                mensajes[-1],
-            ]
+            recuerdos, skill = await asyncio.gather(_recordar(texto), _elegir_skill(texto))
+            extras = [x for x in (mensaje_recuerdos(recuerdos), skills.mensaje_skill(skill)) if x]
+            # Los recuerdos y la skill van justo antes del último mensaje, donde más pesan.
+            contexto = [mensaje_sistema(), *mensajes[:-1], *extras, mensajes[-1]]
+            if skill:
+                await ws.send_json({"type": "skill", "name": skill.nombre, "title": skill.titulo})
             if recuerdos:
                 await ws.send_json({"type": "memory", "count": len(recuerdos)})
-            elif settings.auto_research and await necesita_internet(
-                texto, _ultima_respuesta(mensajes)
+            elif (
+                not skill
+                and settings.auto_research
+                and await necesita_internet(texto, _ultima_respuesta(mensajes))
             ):
                 # Sin recuerdos y la pregunta necesita datos: el núcleo investiga por su cuenta
                 # (el modelo pequeño a veces inventa en vez de usar la herramienta).

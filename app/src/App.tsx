@@ -4,6 +4,12 @@ import { conFormato } from "./lib/texto";
 
 type Msg = { role: "user" | "assistant"; text: string };
 
+function icono(estado: string): string {
+  if (estado.startsWith("Usando lo que")) return "🧠";
+  if (estado.startsWith("Usando mi skill")) return "📘";
+  return "🔧";
+}
+
 export default function App() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -37,6 +43,9 @@ export default function App() {
           break;
         case "memory":
           setTool(`Usando lo que recuerdo (${msg.count})`);
+          break;
+        case "skill":
+          setTool(`Usando mi skill "${msg.title}"`);
           break;
         case "confirm":
           setConfirm({ id: msg.id, question: msg.question });
@@ -132,7 +141,7 @@ export default function App() {
         ))}
         {(tool || waiting) && (
           <div className="w-fit animate-pulse rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-400">
-            {tool ? `${tool.startsWith("Usando lo que") ? "🧠" : "🔧"} ${tool}…` : "Moni está pensando…"}
+            {tool ? `${icono(tool)} ${tool}…` : "Moni está pensando…"}
           </div>
         )}
         <div ref={bottom} />

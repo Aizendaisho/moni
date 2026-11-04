@@ -94,6 +94,26 @@ Además, `tools/apps.py` tiene una lista de procesos protegidos (Windows, Ollama
 
 `memory/respaldo.py`: copia consistente de `data/moni.db` (API de backup de SQLite), comprimida y cifrada en la PC con AES-256-GCM (clave derivada de la frase secreta con scrypt). Destinos: carpeta local (`ASISTENTE_BACKUP_LOCAL_DIR`, por defecto `data/respaldos`) y un bucket privado de Supabase Storage. Automática al arrancar si la última tiene más de 24 h, y se revisa cada 30 min. Retención: 7 diarias + 4 semanales. Supabase solo ve archivos cifrados. Restaurar: `scripts\restaurar.bat` (con el núcleo cerrado), que guarda antes la memoria actual y verifica la integridad de la copia.
 
+## Skills
+
+`core/.../skills/<nombre>/SKILL.md` (las que trae Moni) y `data/skills/` (las tuyas, que ganan si
+se llaman igual). Cada una tiene `title`, `description`, `examples` y los pasos. Antes de cada
+mensaje: los embeddings eligen hasta 3 candidatas (similitud ≥ 0.62 con algún ejemplo) y el
+modelo confirma cuál corresponde o "ninguna" (`agent/router.py`). Los pasos de la elegida van
+como mensaje de sistema justo antes del mensaje del usuario, y la app muestra "📘 Usando mi
+skill...". Con una skill activa no se investiga en internet por adelantado.
+
+## Revisar archivos (seguridad)
+
+`seguridad/analisis.py`, sin abrir ni ejecutar nada: tipo real por los primeros bytes,
+extensión engañosa, origen de la descarga (Zone.Identifier), reglas YARA-X (`seguridad/reglas`
++ `data/reglas-yara`), macros de Office (oletools), plantillas remotas en .docx, PDF con
+JavaScript o /Launch, programas .exe (pefile: empaquetado, inyección), ZIP con ejecutables,
+firma digital (Get-AuthenticodeSignature), Windows Defender (`MpCmdRun -DisableRemediation`, no
+borra ni mueve nada) y, en internet, solo el hash (CIRCL hashlookup y, con clave, MalwareBazaar).
+Veredicto: peligroso / sospechoso / sin hallazgos. Herramientas: `revisar_archivo` y
+`revisar_carpeta` (rápida, sin Defender ni internet).
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.

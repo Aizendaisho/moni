@@ -61,3 +61,39 @@ async def necesita_internet(mensaje: str, anterior: str = "") -> bool:
         return False
     log.info("¿Necesita internet? %s -> %s", mensaje[:80], decision)
     return decision
+
+
+async def elegir_skill(mensaje: str, candidatas: list) -> object | None:
+    """De las skills candidatas (por parecido), cuál corresponde de verdad al mensaje, o None."""
+    if not candidatas:
+        return None
+    por_nombre = {s.nombre: s for s in candidatas}
+    lista = "\n".join(f"- {s.nombre}: {s.descripcion or s.titulo}" for s in candidatas)
+    instrucciones = (
+        "Eres un clasificador. El asistente tiene estas skills (procedimientos para tareas "
+        f"concretas):\n{lista}\n\nElige la skill que corresponde a lo que el usuario PIDE HACER "
+        "en su mensaje. Si solo pregunta qué es algo, pide una opinión o recomendación general, "
+        'o pide otra cosa, responde "ninguna".\n'
+        'Responde solo con JSON: {"skill": "<nombre o ninguna>"}'
+    )
+    formato = {
+        "type": "object",
+        "properties": {"skill": {"type": "string", "enum": [*por_nombre, "ninguna"]}},
+        "required": ["skill"],
+    }
+    try:
+        r = await _client.chat(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": instrucciones},
+                {"role": "user", "content": mensaje},
+            ],
+            format=formato,
+            options={"temperature": 0, "num_predict": 20, "num_ctx": settings.llm_num_ctx},
+        )
+        nombre = json.loads(r.message.content or "{}").get("skill", "ninguna")
+    except Exception:
+        log.exception("Falló el clasificador de skills")
+        return None
+    log.info("Skill para %r: %s", mensaje[:60], nombre)
+    return por_nombre.get(nombre)

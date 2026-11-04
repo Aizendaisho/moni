@@ -21,6 +21,9 @@ dependencies = [
     "httpx>=0.27",
     "numpy>=1.26",
     "cryptography>=43",
+    "yara-x>=1.0",
+    "oletools>=0.60",
+    "pefile>=2024.8.26",
 ]
 
 [project.optional-dependencies]
@@ -68,3 +71,4 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:.*deprecated - use:DeprecationWarning"]
