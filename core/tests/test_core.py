@@ -28,7 +28,8 @@ def test_niveles_de_permiso():
 def test_herramientas_del_sistema():
     procesos = listar_procesos(limite=3)
     assert 0 < len(procesos) <= 3
-    assert {"nombre", "memoria_mb"} <= procesos[0].keys()
+    assert {"programa", "memoria_mb", "cpu_porcentaje"} <= procesos[0].keys()
+    assert listar_procesos(limite=2, ordenar_por="cpu")
     assert 0 < estado_sistema()["ram_total_gb"]
     assert " de " in fecha_hora()
 
@@ -121,3 +122,117 @@ def test_historial_guarda_y_recorta():
 def test_personalidad():
     s = mensaje_sistema()["content"]
     assert "Moni" in s and "{usuario}" not in s and "Ahora es" in s
+
+
+# ---------------------------------------------------------------- S2
+
+
+def test_buscar_programa_por_nombre():
+    from asistente_core.tools.apps import _parecido
+
+    opciones = ["Google Chrome", "Bloc de notas", "Calculadora", "Spotify", "Steam"]
+    assert _parecido("chrome", opciones)[0] == "Google Chrome"
+    assert _parecido("bloc de notas", opciones) == ["Bloc de notas"]
+    assert _parecido("spotyfi", opciones) == ["Spotify"]  # con error de tipeo
+    assert _parecido("photoshop", opciones) == []
+
+
+def test_no_cierra_procesos_protegidos():
+    import pytest
+
+    from asistente_core.tools.apps import _procesos_de
+
+    with pytest.raises(ValueError):
+        _procesos_de("python")  # el propio núcleo de Moni
+
+
+def test_uso_de_internet():
+    from asistente_core.tools.red import uso_de_internet
+
+    r = uso_de_internet(limite=3)
+    assert r["bajada_kb_s"] >= 0 and "nota" in r
+    assert isinstance(r["programas_con_mas_conexiones"], list)
+
+
+def test_confirmacion_y_bitacora():
+    from asistente_core.memory import bitacora as bmod
+
+    b = bmod.Bitacora(":memory:")
+    bmod.usar(b)
+    hechos = []
+
+    @herramienta(Nivel.CONFIRMAR, etiqueta="Borrando", resumen=lambda cosa: f"¿Borro {cosa}?")
+    def _borrar(cosa: str) -> str:
+        """Borra algo.
+
+        Args:
+          cosa: Qué borrar.
+        """
+        hechos.append(cosa)
+        return f"Borré {cosa}."
+
+    preguntas = []
+
+    def responde(valor):
+        async def confirmar(pregunta):
+            preguntas.append(pregunta)
+            return valor
+
+        return confirmar
+
+    try:
+        ok, texto = asyncio.run(ejecutar_herramienta("_borrar", {"cosa": "x"}, responde(False)))
+        assert not ok and "no" in texto and hechos == []
+        ok, texto = asyncio.run(ejecutar_herramienta("_borrar", {"cosa": "y"}, responde(True)))
+        assert ok and hechos == ["y"]
+        assert preguntas == ["¿Borro x?", "¿Borro y?"]
+        acciones = b.ultimas()
+        assert [(a["confirmado"], a["ok"]) for a in acciones] == [(1, 1), (0, 0)]
+    finally:
+        REGISTRO.pop("_borrar")
+        bmod.usar(None)
+
+
+def test_websocket_pide_confirmacion(monkeypatch):
+    """Flujo completo: el modelo pide una acción, la app recibe la pregunta y dice que no."""
+    import asistente_core.main as m
+
+    hechos = []
+
+    @herramienta(Nivel.CONFIRMAR, etiqueta="Apagando", resumen=lambda: "¿Apago la luz?")
+    def _apagar() -> str:
+        """Apaga la luz."""
+        hechos.append(1)
+        return "apagada"
+
+    rondas = iter(
+        [
+            [_parte(tool_calls=[NS(function=NS(name="_apagar", arguments={}))])],
+            [_parte("Vale, no la apago.")],
+        ]
+    )
+
+    async def falso_stream(mensajes, tools):
+        for p in next(rondas):
+            yield p
+
+    real = m.responder
+    monkeypatch.setattr(
+        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+    )
+    monkeypatch.setattr(m, "historial", Historial(":memory:"))
+    try:
+        with TestClient(m.app).websocket_connect("/ws") as ws:
+            assert ws.receive_json()["type"] == "history"
+            ws.send_json({"type": "chat", "text": "apaga la luz"})
+            assert ws.receive_json()["status"] == "start"
+            pregunta = ws.receive_json()
+            assert pregunta["type"] == "confirm" and pregunta["question"] == "¿Apago la luz?"
+            ws.send_json({"type": "confirm_reply", "id": pregunta["id"], "ok": False})
+            fin = ws.receive_json()
+            assert fin["status"] == "end" and fin["ok"] is False
+            assert ws.receive_json() == {"type": "token", "text": "Vale, no la apago."}
+            assert ws.receive_json()["type"] == "done"
+        assert hechos == []
+    finally:
+        REGISTRO.pop("_apagar")

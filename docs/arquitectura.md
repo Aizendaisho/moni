@@ -61,6 +61,8 @@ El núcleo expone un WebSocket en `ws://127.0.0.1:8765/ws` (solo localhost). Men
 | núcleo → app | `{"type": "history", "messages": [...]}` | historial guardado, al conectar |
 | núcleo → app | `{"type": "token", "text": "..."}` | fragmento de respuesta (streaming) |
 | núcleo → app | `{"type": "tool", "label": "...", "status": "start" \| "end"}` | Moni está usando una herramienta |
+| núcleo → app | `{"type": "confirm", "id": "...", "question": "..."}` | pedir Sí/No antes de una acción riesgosa |
+| app → núcleo | `{"type": "confirm_reply", "id": "...", "ok": true}` | respuesta del usuario (sin respuesta en 60 s = no) |
 | núcleo → app | `{"type": "done"}` | fin de la respuesta |
 | núcleo → app | `{"type": "error", "message": "..."}` | algo falló |
 
@@ -69,7 +71,21 @@ El núcleo expone un WebSocket en `ws://127.0.0.1:8765/ws` (solo localhost). Men
 - `core/.../agent/loop.py`: el modelo recibe los esquemas de las herramientas; si pide una, el núcleo la ejecuta (según su nivel de permiso) y le devuelve el resultado, hasta 5 rondas por mensaje.
 - `core/.../tools/`: cada herramienta es una función con `@herramienta(Nivel..., etiqueta=...)` y docstring estilo Google; de ahí sale el esquema que ve el modelo.
 - `core/.../agent/personalidad.md`: cómo habla Moni. Se relee en cada mensaje.
-- `data/moni.db`: historial en SQLite (conversaciones y mensajes, incluidos los resultados de herramientas).
+- `data/moni.db`: historial en SQLite (conversaciones y mensajes, incluidos los resultados de herramientas) y la tabla `acciones`, la bitácora de auditoría de cada herramienta usada.
+
+## Permisos (S2)
+
+| Nivel | Qué pasa | Ejemplos |
+|---|---|---|
+| `libre` | Se ejecuta directo | ver procesos, estado del sistema, uso de internet, abrir un programa |
+| `confirmar` | La app muestra un diálogo Sí/No; sin respuesta en 60 s cuenta como no | cerrar un programa |
+| `prohibido` | Nunca se ofrece al modelo | — |
+
+Además, `tools/apps.py` tiene una lista de procesos protegidos (Windows, Ollama, la propia Moni) que no se cierran aunque se confirme.
+
+## Red por programa
+
+Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.
 
 Pendiente en S4: un canal de eventos compartido (`estado`: escuchando / pensando / hablando, y `viseme` para la boca) que el núcleo envíe a todas las conexiones, para que el avatar reaccione a lo que pasa en la app.
 

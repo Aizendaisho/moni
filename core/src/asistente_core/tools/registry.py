@@ -30,6 +30,10 @@ class Herramienta:
     nivel: Nivel
     etiqueta: str  # texto corto que ve el usuario mientras se ejecuta
     esquema: dict
+    # Para nivel CONFIRMAR: recibe los mismos argumentos y devuelve la pregunta que verá el
+    # usuario ("¿Cierro Chrome (12 procesos)?"). Si lanza ValueError, la acción se cancela
+    # sin preguntar (por ejemplo, el programa no está abierto) y el mensaje va al modelo.
+    resumen: Callable[..., str] | None = None
 
 
 REGISTRO: dict[str, Herramienta] = {}
@@ -46,9 +50,11 @@ def _esquema(fn: Callable[..., Any]) -> dict:
     return esquema
 
 
-def herramienta(nivel: Nivel, etiqueta: str) -> Callable[[Callable], Callable]:
+def herramienta(
+    nivel: Nivel, etiqueta: str, resumen: Callable[..., str] | None = None
+) -> Callable[[Callable], Callable]:
     def registrar(fn: Callable) -> Callable:
-        REGISTRO[fn.__name__] = Herramienta(fn.__name__, fn, nivel, etiqueta, _esquema(fn))
+        REGISTRO[fn.__name__] = Herramienta(fn.__name__, fn, nivel, etiqueta, _esquema(fn), resumen)
         return fn
 
     return registrar

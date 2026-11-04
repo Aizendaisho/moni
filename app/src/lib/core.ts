@@ -4,13 +4,18 @@
 export const CORE_WS_URL = "ws://127.0.0.1:8765/ws";
 
 /** Mensajes que la app envía al núcleo. */
-export type ClientMessage = { type: "chat"; text: string } | { type: "new_conversation" };
+export type ClientMessage =
+  | { type: "chat"; text: string }
+  | { type: "new_conversation" }
+  | { type: "confirm_reply"; id: string; ok: boolean };
 
 /** Mensajes que el núcleo envía a la app. */
 export type CoreMessage =
   | { type: "history"; conversation_id: number; messages: { role: "user" | "assistant"; text: string }[] }
   | { type: "token"; text: string } // fragmento de la respuesta en streaming
   | { type: "tool"; name: string; label: string; status: "start" | "end"; ok?: boolean }
+  | { type: "confirm"; id: string; question: string } // pedir Sí/No antes de una acción
+  | { type: "confirm_closed"; id: string } // la pregunta caducó
   | { type: "done" } // terminó la respuesta
   | { type: "error"; message: string };
 
