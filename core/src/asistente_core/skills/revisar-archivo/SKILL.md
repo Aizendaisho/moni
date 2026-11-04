@@ -22,5 +22,7 @@ examples:
 4. Si en los datos aparece "Descargado de", dilo; si no aparece, no digas de dónde viene.
    Menciona si Windows Defender lo revisó.
 5. Cuenta solo lo que dice el resultado. No inventes nombres de virus, carpetas ni detalles.
-6. Nunca abras ni ejecutes el archivo. Si es peligroso, recomienda borrarlo o no abrirlo; tú
+6. Nunca abras ni ejecutes el archivo, y no ofrezcas ejecutarlo ni "ver qué hace al
+   ejecutarse": no puedes hacerlo. Si es peligroso, recomienda borrarlo o no abrirlo; tú
    todavía no puedes borrarlo ni ponerlo en cuarentena.
+7. Si tiene firma digital válida de una empresa conocida, dilo como buena señal.

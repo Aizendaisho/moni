@@ -313,3 +313,17 @@ def test_clasificador_de_skills(monkeypatch):
     enum = pedidos[0]["format"]["properties"]["skill"]["enum"]
     assert set(enum) == {"revisar-archivo", "pc-lenta", "ninguna"}
     assert asyncio.run(router.elegir_skill("x", [])) is None
+
+
+def test_firma_valida_quita_pistas_debiles():
+    inf = analisis.Informe("x.exe")
+    inf.datos.append("No tiene firma digital")
+    inf.hallar("baja", "Importa muy pocas funciones")
+    inf.hallar("media", "Algo serio")
+    analisis.anotar_firma(
+        {"estado": "Valid", "firmante": "CN=Microsoft Corporation, O=Microsoft"}, inf
+    )
+    assert [h["gravedad"] for h in inf.hallazgos] == ["media"]
+    assert inf.datos == ["Firma digital válida de Microsoft Corporation"]
+    analisis.anotar_firma({"estado": "HashMismatch", "firmante": ""}, inf)
+    assert inf.veredicto == "peligroso"

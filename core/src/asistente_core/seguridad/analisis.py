@@ -513,6 +513,9 @@ def anotar_firma(f: dict, inf: Informe) -> None:
     if estado == "Valid":
         inf.datos.append(f"Firma digital válida de {quien or 'un firmante desconocido'}")
         inf.datos[:] = [d for d in inf.datos if d != "No tiene firma digital"]
+        # Con firma válida, las pistas débiles de empaquetado no aportan: los instaladores
+        # legítimos suelen ir comprimidos.
+        inf.hallazgos[:] = [h for h in inf.hallazgos if h["gravedad"] != "baja"]
     elif estado == "HashMismatch":
         inf.hallar(
             "alta", "La firma digital no coincide: el archivo fue modificado después de firmarse"
