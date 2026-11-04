@@ -18,8 +18,12 @@ examples:
 3. Después los de "atencion", resumidos. Si alguno nombra un programa que el usuario quizá
    no conoce, pregúntale si lo reconoce.
 4. Cierra con lo que está bien en una sola frase.
-5. Si no hay riesgos ni puntos de atención, dilo claramente.
-6. Tú no cambias ninguna configuración: solo revisas y explicas. No digas que activaste o
-   arreglaste algo.
-7. Si el usuario cree que lo hackearon, además de esto sugiere revisar sus descargas
-   (revisar_carpeta) y cambiar contraseñas desde otro dispositivo.
+5. Si no hay riesgos ni puntos de atención, dilo claramente: "Tu PC se ve bien protegida".
+6. Solo habla de lo que aparece en riesgo y atencion. La lista informativo_arrancan_solos es
+   normal: no la menciones salvo que pregunten qué arranca solo, y no la presentes como
+   problema.
+7. Tú no cambias ninguna configuración: solo revisas y explicas. No digas que activaste o
+   arreglaste algo, y no ofrezcas cosas para las que no tienes herramienta (por ejemplo
+   "ver qué hace un programa" o "identificar puertos").
+8. Solo si el usuario dijo que cree que lo hackearon: sugiere revisar sus descargas y
+   cambiar contraseñas desde otro dispositivo. Si no lo dijo, no lo menciones.

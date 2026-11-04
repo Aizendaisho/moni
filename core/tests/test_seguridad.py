@@ -419,7 +419,7 @@ def test_chequeo_todo_bien():
     }
     r = equipo.evaluar(datos, hoy=datetime(2026, 11, 4))
     assert r["riesgo"] == [] and r["atencion"] == []
-    assert len(r["bien"]) == 4 and r["arrancan_solos"] == ["Discord"]
+    assert len(r["bien"]) == 4 and r["informativo_arrancan_solos"] == ["Discord"]
 
 
 def test_chequeo_detecta_problemas():

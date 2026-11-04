@@ -299,9 +299,8 @@ def evaluar(datos: dict, hoy: datetime | None = None) -> dict:
         "riesgo": riesgo,
         "atencion": atencion,
         "bien": bien,
-        "arrancan_solos": nombres_inicio,
-        "tareas_programadas_no_microsoft": len(tareas),
-        "puertos_abiertos_a_la_red": len(datos.get("puertos") or []),
+        # Solo para contestar si el usuario pregunta: tenerlos no es un problema.
+        "informativo_arrancan_solos": nombres_inicio,
         "no_revisado": datos.get("errores") or [],
         "nota": "Revisión de solo lectura: no se cambió nada.",
     }
