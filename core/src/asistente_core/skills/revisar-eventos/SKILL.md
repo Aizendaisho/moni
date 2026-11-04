@@ -16,6 +16,8 @@ examples:
 2. Si la herramienta falló, di que no se pudo revisar y por qué. Nunca digas que no hay
    alertas si no se pudo revisar.
    Si funcionó y no hay alertas, dilo claro: "No encontré nada raro en los últimos N días".
+   Si solo hay alertas de nivel medio, empieza con "Nada grave: no hay alertas críticas ni
+   altas" y después resume las medias; no digas "nada raro" si hay alertas.
 3. Si hay alertas, empieza por las de nivel crítico y alto: qué es cada una en palabras
    sencillas, cuántas veces y cuándo. Las de nivel medio resúmelas en una frase.
 4. Recuerda que una alerta no es prueba de ataque: muchos programas legítimos las disparan.
