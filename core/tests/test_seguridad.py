@@ -665,7 +665,9 @@ def _zip_hayabusa(nombres):
     return buf.getvalue()
 
 
-def test_instalar_hayabusa_y_firma(tmp_path):
+def test_instalar_hayabusa_comprueba_el_hash(tmp_path):
+    import hashlib
+
     from asistente_core.seguridad import eventos
 
     contenido = _zip_hayabusa(
@@ -675,12 +677,69 @@ def test_instalar_hayabusa_y_firma(tmp_path):
         transport=httpx.MockTransport(lambda req: httpx.Response(200, content=contenido))
     )
     h = eventos.Hayabusa(tmp_path / "h")
-    h.instalar(cliente, verificar_firma=lambda exe: "Valid")
+    h.instalar(cliente, sha256=hashlib.sha256(contenido).hexdigest())
     assert h.instalado()
     assert not (tmp_path / "fuera.txt").exists()  # sin rutas que escapen de la carpeta
     assert (tmp_path / "h" / "fuera.txt").exists()
 
-    malo = eventos.Hayabusa(tmp_path / "m")
-    with pytest.raises(ValueError, match="firma"):
-        malo.instalar(cliente, verificar_firma=lambda exe: "HashMismatch")
-    assert not (tmp_path / "m").exists()  # se borra lo descargado
+    otro = eventos.Hayabusa(tmp_path / "m")
+    with pytest.raises(ValueError, match="no coincide"):
+        otro.instalar(cliente)  # el hash fijado de 4.3.1 no es el de este zip de prueba
+    assert not (tmp_path / "m").exists()
+    assert eventos.HASHES[eventos.VERSION]  # la versión fijada siempre tiene su hash
+
+
+def test_evento_completo_pide_confirmacion():
+    from asistente_core.permissions.policy import Nivel
+    from asistente_core.tools.registry import REGISTRO
+
+    assert REGISTRO["revisar_eventos_de_windows"].nivel is Nivel.LIBRE
+    assert REGISTRO["revisar_eventos_completo"].nivel is Nivel.CONFIRMAR
+    assert "administrador" in REGISTRO["revisar_eventos_completo"].resumen(dias=3)
+    params = REGISTRO["revisar_eventos_de_windows"].esquema["function"]["parameters"]
+    assert "completo" not in params["properties"]  # el modelo no puede elevar por su cuenta
+
+
+def test_skill_run_first_consulta_antes(monkeypatch):
+    """Una skill con run_first hace que el núcleo ejecute la herramienta antes de responder."""
+    import asistente_core.main as m
+    from asistente_core.memory.historial import Historial
+
+    s = skills.Skills([skills.INCLUIDAS], _embed_falso)
+    explicar = next(k for k in s.todas() if k.nombre == "explicar-amenaza")
+    assert explicar.antes == "consultar_attack"
+    vistos, llamadas = [], []
+
+    async def falso_stream(mensajes, tools):
+        vistos.append(list(mensajes))
+        yield _parte("Un keylogger registra lo que escribes. (Fuente: MITRE ATT&CK T1056.001)")
+
+    async def esta(texto, candidatas):
+        return explicar
+
+    async def falso_ejecutar(nombre, args, confirmar=None):
+        llamadas.append((nombre, args))
+        return True, '[{"id": "T1056.001", "nombre": "Keylogging"}]'
+
+    real = m.responder
+    monkeypatch.setattr(
+        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+    )
+    monkeypatch.setattr(m, "elegir_skill", esta)
+    monkeypatch.setattr(m, "ejecutar_herramienta", falso_ejecutar)
+    monkeypatch.setattr(m, "historial", Historial(":memory:"))
+    skills.usar(s)
+    monkeypatch.setattr(skills, "UMBRAL", -1.0)
+    try:
+        with TestClient(m.app).websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "chat", "text": "¿qué es un keylogger?"})
+            assert ws.receive_json()["type"] == "skill"
+            assert ws.receive_json()["status"] == "start"
+            assert ws.receive_json()["status"] == "end"
+            assert ws.receive_json()["type"] == "token"
+            assert ws.receive_json()["type"] == "done"
+    finally:
+        skills.usar(None)
+    assert llamadas == [("consultar_attack", {"consulta": "¿qué es un keylogger?"})]
+    assert [x["role"] for x in vistos[0][-2:]] == ["assistant", "tool"]

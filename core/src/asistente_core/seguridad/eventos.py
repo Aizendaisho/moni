@@ -14,9 +14,11 @@ Dos modos:
 
 Hayabusa se descarga la primera vez (paquete "live-response" de la versión fijada, ~10 MB
 comprimido, con las reglas codificadas para que el antivirus no dé falsos positivos) en
-data/herramientas/hayabusa, y se comprueba su firma digital antes de usarlo.
+data/herramientas/hayabusa, y se comprueba su SHA-256 contra el valor fijado aquí para esa
+versión (el .exe de Hayabusa no lleva firma Authenticode de Windows).
 """
 
+import hashlib
 import json
 import logging
 import shutil
@@ -32,6 +34,8 @@ import httpx
 log = logging.getLogger("moni.eventos")
 
 VERSION = "4.3.1"
+# SHA-256 del paquete live-response de cada versión (comprobado al fijar la versión).
+HASHES = {"4.3.1": "457185c17b0ce4919b566ee9ecf4ba9f2f78f6b786c2c7367ce5fd921a39cfdf"}
 URL = (
     "https://github.com/Yamato-Security/hayabusa/releases/download/"
     "v{v}/hayabusa-{v}-win-x64-live-response.zip"
@@ -66,10 +70,17 @@ class Hayabusa:
     def instalado(self) -> bool:
         return self.exe.exists() and (self.carpeta / "encoded_rules.yml").exists()
 
-    def instalar(self, cliente: httpx.Client | None = None, verificar_firma=None) -> None:
+    def instalar(self, cliente: httpx.Client | None = None, sha256: str | None = None) -> None:
         cliente = cliente or httpx.Client(timeout=300, follow_redirects=True)
         r = cliente.get(URL.format(v=self.version))
         r.raise_for_status()
+        esperado = sha256 or HASHES.get(self.version)
+        real = hashlib.sha256(r.content).hexdigest()
+        if not esperado or real != esperado:
+            raise ValueError(
+                f"El paquete de Hayabusa no coincide con el esperado (SHA-256 {real[:16]}…): "
+                "no lo voy a usar."
+            )
         self.carpeta.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory() as tmp:
             zip_path = Path(tmp) / "hayabusa.zip"
@@ -80,14 +91,8 @@ class Hayabusa:
                     if nombre and not info.is_dir():
                         (self.carpeta / nombre).write_bytes(z.read(info))
         if not self.instalado():
+            shutil.rmtree(self.carpeta, ignore_errors=True)
             raise ValueError("El paquete de Hayabusa no trae lo esperado.")
-        if verificar_firma is not None:
-            estado = verificar_firma(self.exe)
-            if estado not in (None, "Valid"):
-                shutil.rmtree(self.carpeta, ignore_errors=True)
-                raise ValueError(
-                    f"La firma digital de Hayabusa no es válida ({estado}): no lo voy a usar."
-                )
         log.info("Hayabusa %s instalado en %s", self.version, self.carpeta)
 
     # ------------------------------------------------------------ ejecutar

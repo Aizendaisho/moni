@@ -35,6 +35,7 @@ from .agent.router import elegir_skill, necesita_internet
 from .config import settings
 from .memory import bitacora, conocimiento, respaldo
 from .memory.historial import Historial
+from .tools.registry import REGISTRO
 
 log = logging.getLogger("moni")
 historial = Historial(settings.data_dir / "moni.db")
@@ -199,39 +200,38 @@ def _ultima_respuesta(mensajes: list[dict]) -> str:
     return ""
 
 
-async def _investigar_antes(ws: WebSocket, pregunta: str) -> list[dict]:
-    """Ejecuta `investigar` y lo devuelve como si Moni hubiera llamado la herramienta."""
-    args = {"pregunta": pregunta}
+async def _herramienta_antes(ws: WebSocket, nombre: str, args: dict) -> list[dict]:
+    """Ejecuta una herramienta y la devuelve como si Moni la hubiera llamado. Se usa cuando el
+    modelo pequeño tiende a contestar de memoria en vez de usar la herramienta."""
+    etiqueta = REGISTRO[nombre].etiqueta if nombre in REGISTRO else nombre
+    await ws.send_json({"type": "tool", "name": nombre, "label": etiqueta, "status": "start"})
+    ok, resultado = await ejecutar_herramienta(nombre, args)
     await ws.send_json(
-        {
-            "type": "tool",
-            "name": "investigar",
-            "label": "Investigando en internet",
-            "status": "start",
-        }
-    )
-    ok, resultado = await ejecutar_herramienta("investigar", args)
-    await ws.send_json(
-        {
-            "type": "tool",
-            "name": "investigar",
-            "label": "Investigando en internet",
-            "status": "end",
-            "ok": ok,
-        }
+        {"type": "tool", "name": nombre, "label": etiqueta, "status": "end", "ok": ok}
     )
     if not ok:
-        resultado = (
-            f"No se pudo investigar en internet: {resultado}. Díselo al usuario con honestidad."
-        )
+        resultado = f"No se pudo usar {nombre}: {resultado}. Díselo al usuario con honestidad."
     return [
         {
             "role": "assistant",
             "content": "",
-            "tool_calls": [{"function": {"name": "investigar", "arguments": args}}],
+            "tool_calls": [{"function": {"name": nombre, "arguments": args}}],
         },
-        {"role": "tool", "tool_name": "investigar", "content": resultado},
+        {"role": "tool", "tool_name": nombre, "content": resultado},
     ]
+
+
+async def _investigar_antes(ws: WebSocket, pregunta: str) -> list[dict]:
+    return await _herramienta_antes(ws, "investigar", {"pregunta": pregunta})
+
+
+def _args_con_mensaje(nombre: str, texto: str) -> dict | None:
+    """{primer parámetro obligatorio: mensaje} para la herramienta `run_first` de una skill."""
+    h = REGISTRO.get(nombre)
+    if h is None:
+        return None
+    requeridos = h.esquema["function"]["parameters"].get("required", [])
+    return {requeridos[0]: texto} if requeridos else {}
 
 
 @app.websocket("/ws")
@@ -262,8 +262,18 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 await ws.send_json({"type": "skill", "name": skill.nombre, "title": skill.titulo})
             if recuerdos:
                 await ws.send_json({"type": "memory", "count": len(recuerdos)})
+            if (
+                skill
+                and skill.antes
+                and (args := _args_con_mensaje(skill.antes, texto)) is not None
+            ):
+                previos = await _herramienta_antes(ws, skill.antes, args)
+                contexto.extend(previos)
+                for m in previos:
+                    historial.agregar(conv, m)
             elif (
-                not skill
+                not recuerdos
+                and not skill
                 and settings.auto_research
                 and await necesita_internet(texto, _ultima_respuesta(mensajes))
             ):

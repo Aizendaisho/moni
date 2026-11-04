@@ -9,6 +9,7 @@ Cada skill es una carpeta con un SKILL.md:
     examples:
       - ¿este archivo tiene virus?
       - revisa el pdf que me llegó
+    run_first: consultar_attack   (opcional)
     ---
     Pasos que Moni debe seguir (texto libre).
 
@@ -57,6 +58,9 @@ class Skill:
     ejemplos: list[str]
     pasos: str
     ruta: Path
+    # Herramienta que el núcleo ejecuta antes de responder, pasándole el mensaje del usuario
+    # (frontmatter `run_first`). Para cuando el modelo tiende a contestar de memoria.
+    antes: str | None = None
     vectores: np.ndarray | None = field(default=None, repr=False)
 
 
@@ -101,6 +105,7 @@ def leer(ruta: Path) -> Skill | None:
         ejemplos=ejemplos,
         pasos=cuerpo,
         ruta=ruta,
+        antes=str(datos["run_first"]) if isinstance(datos.get("run_first"), str) else None,
     )
 
 

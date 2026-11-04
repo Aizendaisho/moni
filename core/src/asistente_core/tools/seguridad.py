@@ -319,19 +319,36 @@ def actualizar_conocimiento_de_seguridad() -> dict:
 hayabusa = eventos.Hayabusa(settings.data_dir / "herramientas" / "hayabusa")
 
 
-def _estado_firma(ruta: Path) -> str | None:
-    f = analisis.firma(ruta)
-    return f.get("estado") if f else None
+def _revisar_eventos(dias: int, completo: bool) -> dict:
+    if not hayabusa.instalado():
+        hayabusa.instalar()
+    return hayabusa.escanear(dias=max(1, min(int(dias), 30)), completo=completo)
 
 
 @herramienta(Nivel.LIBRE, etiqueta="Revisando los registros de eventos")
-def revisar_eventos_de_windows(dias: int = 7, completo: bool = False) -> dict:
-    """Busca señales de ataques en los registros de eventos de Windows con Hayabusa (más de 4000 reglas de detección): PowerShell sospechoso, servicios o tareas creadas por malware, registros borrados, etc. Solo lee. La primera vez descarga Hayabusa (unos 20 MB).
+def revisar_eventos_de_windows(dias: int = 7) -> dict:
+    """Busca señales de ataques en los registros de eventos de Windows con Hayabusa (más de 4000 reglas de detección): PowerShell sospechoso, servicios o tareas creadas por malware, registros borrados, etc. Solo lee y no necesita administrador (no incluye el registro de Seguridad). La primera vez descarga Hayabusa (unos 20 MB).
 
     Args:
       dias: Cuántos días hacia atrás revisar (1 a 30).
-      completo: True solo si el usuario pide la revisión completa: incluye el registro de Seguridad y Windows le pedirá permiso de administrador.
     """
-    if not hayabusa.instalado():
-        hayabusa.instalar(verificar_firma=_estado_firma)
-    return hayabusa.escanear(dias=max(1, min(int(dias), 30)), completo=bool(completo))
+    return _revisar_eventos(dias, completo=False)
+
+
+def _pregunta_completo(dias: int = 7) -> str:
+    return (
+        f"Para revisar todos los registros de los últimos {dias} días, incluido el de Seguridad, "
+        "Windows te va a pedir permiso de administrador. ¿Sigo?"
+    )
+
+
+@herramienta(
+    Nivel.CONFIRMAR, etiqueta="Revisando todos los registros de eventos", resumen=_pregunta_completo
+)
+def revisar_eventos_completo(dias: int = 7) -> dict:
+    """Como revisar_eventos_de_windows pero con todos los registros, incluido el de Seguridad (inicios de sesión). Úsala SOLO si el usuario pide la revisión completa o el registro de Seguridad: necesita administrador y Windows le muestra su ventana de permiso.
+
+    Args:
+      dias: Cuántos días hacia atrás revisar (1 a 30).
+    """
+    return _revisar_eventos(dias, completo=True)

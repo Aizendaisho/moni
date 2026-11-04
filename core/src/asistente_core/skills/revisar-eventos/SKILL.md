@@ -10,11 +10,12 @@ examples:
   - ¿alguien entró a mi computadora?
   - haz un análisis de los registros de windows de los últimos 3 días
 ---
-1. Llama a revisar_eventos_de_windows. Usa los días que diga el usuario (7 si no dice).
-   Pon completo=true solo si pide la revisión completa, el registro de Seguridad, o
-   pregunta si alguien entró a su cuenta; avísale en una frase que Windows le va a pedir
-   permiso de administrador.
-2. Si no hay alertas, dilo claro: "No encontré nada raro en los últimos N días".
+1. Llama a revisar_eventos_de_windows con los días que diga el usuario (7 si no dice).
+   Solo si pide literalmente la revisión completa o el registro de Seguridad, usa
+   revisar_eventos_completo (pide permiso con una ventana; no preguntes tú antes).
+2. Si la herramienta falló, di que no se pudo revisar y por qué. Nunca digas que no hay
+   alertas si no se pudo revisar.
+   Si funcionó y no hay alertas, dilo claro: "No encontré nada raro en los últimos N días".
 3. Si hay alertas, empieza por las de nivel crítico y alto: qué es cada una en palabras
    sencillas, cuántas veces y cuándo. Las de nivel medio resúmelas en una frase.
 4. Recuerda que una alerta no es prueba de ataque: muchos programas legítimos las disparan.
@@ -22,4 +23,5 @@ examples:
    Visual Studio Code, Ollama, Moni, el antivirus), dilo como probable falsa alarma.
 5. Si una alerta nombra una técnica o un programa de Windows y hace falta explicarla, usa
    consultar_attack o consultar_programa_windows.
-6. Si fue la revisión sin administrador, menciona que el registro de Seguridad no se revisó.
+6. Si fue la revisión sin administrador, menciona en una frase que el registro de Seguridad
+   no se revisó y que puede pedir la revisión completa.

@@ -101,7 +101,9 @@ se llaman igual). Cada una tiene `title`, `description`, `examples` y los pasos.
 mensaje: los embeddings eligen hasta 3 candidatas (similitud ≥ 0.62 con algún ejemplo) y el
 modelo confirma cuál corresponde o "ninguna" (`agent/router.py`). Los pasos de la elegida van
 como mensaje de sistema justo antes del mensaje del usuario, y la app muestra "📘 Usando mi
-skill...". Con una skill activa no se investiga en internet por adelantado.
+skill...". Con una skill activa no se investiga en internet por adelantado. Una skill puede
+declarar `run_first: <herramienta>`: el núcleo la ejecuta con el mensaje del usuario antes de
+que responda el modelo (así no contesta de memoria; lo usa `explicar-amenaza`).
 
 ## Revisar archivos (seguridad)
 
@@ -144,8 +146,8 @@ comprueba su firma digital. Sin administrador: exporta con `wevtutil` los canale
 (Sistema, Aplicación, PowerShell, Defender, Tareas programadas, BITS, WMI) de los últimos N días
 y Hayabusa los analiza con nivel mínimo "medium". Modo completo: Hayabusa en vivo como
 administrador (`Start-Process -Verb RunAs`, Windows muestra la ventana UAC). Las alertas se
-agrupan por regla y se ordenan por gravedad. Herramienta `revisar_eventos_de_windows`, skill
-`revisar-eventos`.
+agrupan por regla y se ordenan por gravedad. Herramientas `revisar_eventos_de_windows` (libre) y `revisar_eventos_completo` (pide
+confirmación antes de la UAC); skill `revisar-eventos`.
 
 ## Red por programa
 
