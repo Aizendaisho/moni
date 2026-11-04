@@ -39,7 +39,10 @@ CREATE INDEX IF NOT EXISTS idx_fragmentos_fuente ON fragmentos(fuente_id);
 # Recibe textos y devuelve un vector por texto. `tipo` es "documento" o "consulta".
 Embedder = Callable[[list[str], str], list[list[float]]]
 
-UMBRAL = 0.55  # similitud mínima para considerar que un recuerdo es relevante
+# Similitud mínima para considerar que un recuerdo es relevante. Medido con nomic-embed-text
+# sobre la memoria real (190 fragmentos del Quijote): preguntas relacionadas dan 0.75-0.82 y
+# preguntas sin relación ("capital de Japón", "receta de mangú") llegan a 0.61-0.64.
+UMBRAL = 0.70
 
 
 def fragmentar(texto: str, tam: int = 1200, solape: int = 150) -> list[str]:
