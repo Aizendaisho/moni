@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..config import settings
 from ..permissions.policy import Nivel
-from ..seguridad import analisis
+from ..seguridad import analisis, cuarentena, equipo
 from .registry import herramienta
 
 _reglas = analisis.Reglas([analisis.REGLAS_MONI, settings.data_dir / "reglas-yara"])
@@ -167,3 +167,72 @@ def revisar_carpeta(carpeta: str = "descargas", limite: int = 15) -> dict:
         "archivos": filas,
         "nota": "Revisión rápida sin Windows Defender ni consulta en internet.",
     }
+
+
+# ---------------------------------------------------------------- cuarentena
+
+_cuarentena = cuarentena.Cuarentena(settings.data_dir / "cuarentena")
+
+
+def _pregunta_poner(ruta: str, motivo: str = "") -> str:
+    p = resolver(ruta)
+    if not p.is_file():
+        raise ValueError(f"{p} no es un archivo")
+    return f"¿Muevo {p.name} a la cuarentena? Se aparta de {p.parent} y se puede devolver luego."
+
+
+@herramienta(Nivel.CONFIRMAR, etiqueta="Moviendo a la cuarentena", resumen=_pregunta_poner)
+def poner_en_cuarentena(ruta: str, motivo: str = "") -> dict:
+    """Aparta un archivo peligroso o sospechoso: lo mueve a la cuarentena de Moni, desactivado para que no se pueda abrir por accidente. No lo borra; se puede devolver con sacar_de_cuarentena. Muestra al usuario una ventana de Sí/No.
+
+    Args:
+      ruta: Ruta completa o nombre del archivo (como en revisar_archivo).
+      motivo: Por qué se aparta, en pocas palabras (por ejemplo "PDF con JavaScript").
+    """
+    ficha = _cuarentena.poner(resolver(ruta), motivo)
+    return {
+        "hecho": f"{ficha['nombre']} quedó en cuarentena",
+        "id": ficha["id"],
+        "estaba_en": ficha["ruta_original"],
+    }
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Revisando la cuarentena")
+def ver_cuarentena() -> list[dict]:
+    """Lista los archivos que Moni tiene en cuarentena, con su ruta original, fecha y motivo."""
+    return [
+        {
+            "id": f["id"],
+            "archivo": f["nombre"],
+            "estaba_en": f["ruta_original"],
+            "fecha": f["fecha"].replace("T", " "),
+            "motivo": f.get("motivo", ""),
+        }
+        for f in _cuarentena.listar()
+    ]
+
+
+def _pregunta_sacar(archivo: str) -> str:
+    f = _cuarentena.buscar(archivo)
+    motivo = f" Se apartó por: {f['motivo']}." if f.get("motivo") else ""
+    return f"¿Devuelvo {f['nombre']} a {Path(f['ruta_original']).parent}?{motivo}"
+
+
+@herramienta(Nivel.CONFIRMAR, etiqueta="Sacando de la cuarentena", resumen=_pregunta_sacar)
+def sacar_de_cuarentena(archivo: str) -> dict:
+    """Devuelve un archivo de la cuarentena a su carpeta original, tal como estaba. Úsalo solo si el usuario lo pide. Muestra una ventana de Sí/No.
+
+    Args:
+      archivo: Nombre del archivo o id que aparece en ver_cuarentena.
+    """
+    f = _cuarentena.restaurar(archivo)
+    return {"hecho": f"{f['nombre']} volvió a su sitio", "ruta": f["restaurado_en"]}
+
+
+# ---------------------------------------------------------------- chequeo de la PC
+
+
+@herramienta(Nivel.LIBRE, etiqueta="Revisando la seguridad de la PC")
+def chequeo_de_seguridad() -> dict:
+    """Revisa la seguridad de esta PC sin cambiar nada: antivirus (Windows Defender), firewall, actualizaciones de Windows, control de cuentas (UAC), programas que arrancan solos, tareas programadas, puertos abiertos a la red y programas que corren desde carpetas raras. Devuelve lo que es riesgo, lo que merece atención y lo que está bien."""
+    return equipo.evaluar(equipo.recoger())

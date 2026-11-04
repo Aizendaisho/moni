@@ -114,6 +114,19 @@ borra ni mueve nada) y, en internet, solo el hash (CIRCL hashlookup y, con clave
 Veredicto: peligroso / sospechoso / sin hallazgos. Herramientas: `revisar_archivo` y
 `revisar_carpeta` (rápida, sin Defender ni internet).
 
+## Cuarentena y chequeo de la PC
+
+- `seguridad/cuarentena.py`: `poner_en_cuarentena` y `sacar_de_cuarentena` (nivel CONFIRMAR)
+  mueven el archivo a `data/cuarentena/` transformado con XOR (no se abre por accidente ni lo
+  vuelve a detectar el antivirus) junto con una ficha .json (ruta original, hash, fecha,
+  motivo). Restaurar comprueba el hash y nunca pisa un archivo que haya aparecido en su lugar.
+  Moni nunca borra.
+- `seguridad/equipo.py`: `chequeo_de_seguridad` (solo lectura, sin administrador) revisa
+  Defender, firewall, última actualización, UAC, programas de inicio (registro y carpetas),
+  tareas programadas que no son de Microsoft, puertos abiertos a la red y programas que corren
+  desde carpetas raras. `recoger()` (Windows) y `evaluar()` (lógica pura, probada) están
+  separados.
+
 ## Red por programa
 
 Sin permisos de administrador, Windows permite saber la velocidad total de la PC y qué programas tienen conexiones abiertas (y cuántas), pero no los bytes exactos de cada uno. Eso solo lo da ETW (Event Tracing for Windows, lo que usa el Monitor de recursos), que requiere administrador. Plan: un pequeño servicio aparte que corra elevado, con su propio aviso de UAC al instalarse, y que el núcleo consulte por un canal local. Está en el roadmap como tarea pendiente del S2.

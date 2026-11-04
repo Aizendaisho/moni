@@ -71,9 +71,11 @@ async def elegir_skill(mensaje: str, candidatas: list) -> object | None:
     lista = "\n".join(f"- {s.nombre}: {s.descripcion or s.titulo}" for s in candidatas)
     instrucciones = (
         "Eres un clasificador. El asistente tiene estas skills (procedimientos para tareas "
-        f"concretas):\n{lista}\n\nElige la skill que corresponde a lo que el usuario PIDE HACER "
-        "en su mensaje. Si solo pregunta qué es algo, pide una opinión o recomendación general, "
-        'o pide otra cosa, responde "ninguna".\n'
+        f"concretas):\n{lista}\n\nElige la skill que sirve para atender el mensaje del usuario: "
+        "cuando pide hacer algo o pregunta por el estado de su PC, sus archivos o el asistente.\n"
+        'Responde "ninguna" si solo pide una definición o explicación general ("¿qué es...?"), '
+        "una opinión o recomendación, o algo que ninguna skill hace.\n"
+        "El Escritorio, Descargas y Documentos son carpetas.\n"
         'Responde solo con JSON: {"skill": "<nombre o ninguna>"}'
     )
     formato = {

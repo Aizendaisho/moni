@@ -327,3 +327,141 @@ def test_firma_valida_quita_pistas_debiles():
     assert inf.datos == ["Firma digital válida de Microsoft Corporation"]
     analisis.anotar_firma({"estado": "HashMismatch", "firmante": ""}, inf)
     assert inf.veredicto == "peligroso"
+
+
+# ---------------------------------------------------------------- cuarentena
+
+
+def test_cuarentena_aparta_y_devuelve(tmp_path):
+    from asistente_core.seguridad.cuarentena import Cuarentena
+
+    c = Cuarentena(tmp_path / "cuarentena")
+    original = tmp_path / "Downloads" / "factura.pdf.exe"
+    original.parent.mkdir()
+    contenido = b"MZ" + bytes(range(256)) * 10
+    original.write_bytes(contenido)
+
+    ficha = c.poner(original, "doble extensión")
+    assert not original.exists()
+    guardado = tmp_path / "cuarentena" / f"{ficha['id']}.moni"
+    assert guardado.read_bytes()[:2] != b"MZ"  # desactivado: ya no es un .exe válido
+    assert [f["nombre"] for f in c.listar()] == ["factura.pdf.exe"]
+    with pytest.raises(ValueError, match="ya está en la cuarentena"):
+        c.poner(guardado)
+
+    # si en su lugar apareció otro archivo, no se pisa
+    original.write_bytes(b"nuevo")
+    r = c.restaurar("factura")
+    assert Path(r["restaurado_en"]).name == "factura.pdf (restaurado).exe"
+    assert Path(r["restaurado_en"]).read_bytes() == contenido
+    assert original.read_bytes() == b"nuevo"
+    assert c.listar() == []
+
+
+def test_cuarentena_detecta_copia_danada(tmp_path):
+    from asistente_core.seguridad.cuarentena import Cuarentena
+
+    c = Cuarentena(tmp_path / "q")
+    a = tmp_path / "a.txt"
+    a.write_bytes(b"hola mundo")
+    f = c.poner(a)
+    (tmp_path / "q" / f"{f['id']}.moni").write_bytes(b"roto")
+    with pytest.raises(ValueError, match="dañada"):
+        c.restaurar(f["id"])
+    assert not a.exists() and c.listar()  # no se tocó nada
+
+
+def test_herramientas_de_cuarentena_piden_confirmacion(tmp_path, monkeypatch):
+    from asistente_core.permissions.policy import Nivel
+    from asistente_core.seguridad.cuarentena import Cuarentena
+    from asistente_core.tools.registry import REGISTRO
+
+    assert REGISTRO["poner_en_cuarentena"].nivel is Nivel.CONFIRMAR
+    assert REGISTRO["sacar_de_cuarentena"].nivel is Nivel.CONFIRMAR
+    assert REGISTRO["ver_cuarentena"].nivel is Nivel.LIBRE
+    monkeypatch.setattr(tseg, "_cuarentena", Cuarentena(tmp_path / "q"))
+    p = tmp_path / "virus.exe"
+    p.write_bytes(b"MZ")
+    pregunta = REGISTRO["poner_en_cuarentena"].resumen(ruta=str(p))
+    assert "virus.exe" in pregunta and "cuarentena" in pregunta
+    tseg.poner_en_cuarentena(str(p), "prueba")
+    assert tseg.ver_cuarentena()[0]["motivo"] == "prueba"
+    assert "Se apartó por: prueba" in REGISTRO["sacar_de_cuarentena"].resumen(archivo="virus.exe")
+    with pytest.raises(ValueError):  # no existe: se cancela sin preguntar
+        REGISTRO["sacar_de_cuarentena"].resumen(archivo="otro.exe")
+
+
+# ---------------------------------------------------------------- chequeo de la PC
+
+
+def test_chequeo_todo_bien():
+    from datetime import datetime
+
+    from asistente_core.seguridad import equipo
+
+    datos = {
+        "windows": {
+            "defender": {"activo": True, "tiempo_real": True, "dias_firmas": 0},
+            "firewall": [
+                {"perfil": "Domain", "activo": True},
+                {"perfil": "Public", "activo": True},
+            ],
+            "ultima_actualizacion": "2026-10-20",
+            "uac": 1,
+            "tareas": [
+                {"nombre": "GoogleUpdate", "accion": r"C:\Program Files\Google\Update.exe /ua"}
+            ],
+        },
+        "inicio_registro": [
+            {"nombre": "Discord", "comando": r'"C:\Users\a\AppData\Local\Discord\Update.exe"'}
+        ],
+        "puertos": [{"puerto": 445, "programa": "System"}],
+    }
+    r = equipo.evaluar(datos, hoy=datetime(2026, 11, 4))
+    assert r["riesgo"] == [] and r["atencion"] == []
+    assert len(r["bien"]) == 4 and r["arrancan_solos"] == ["Discord"]
+
+
+def test_chequeo_detecta_problemas():
+    from datetime import datetime
+
+    from asistente_core.seguridad import equipo
+
+    datos = {
+        "windows": {
+            "defender": {"activo": True, "tiempo_real": False, "dias_firmas": 1},
+            "firewall": {"perfil": "Public", "activo": False},
+            "ultima_actualizacion": "2026-07-01",
+            "uac": 0,
+            "tareas": {
+                "nombre": "Updater",
+                "accion": "powershell.exe -w hidden -enc SQBFAFgA",
+            },
+        },
+        "inicio_registro": [
+            {"nombre": "svchost", "comando": r"C:\Users\a\AppData\Local\Temp\svchost.exe"}
+        ],
+        "inicio_carpetas": [{"nombre": "x.vbs", "comando": r"wscript C:\x.vbs"}],
+        "puertos": [{"puerto": 3389, "programa": "svchost.exe"}],
+        "procesos_raros": [{"programa": "a.exe", "ruta": r"C:\Users\a\Downloads\a.exe"}],
+        "errores": ["puertos: acceso denegado"],
+    }
+    r = equipo.evaluar(datos, hoy=datetime(2026, 11, 4))
+    texto = " ".join(r["riesgo"])
+    assert "tiempo real" in texto and "firewall" in texto and "UAC" in texto
+    assert "126 días" in texto
+    atencion = " ".join(r["atencion"])
+    assert "svchost" in atencion and "x.vbs" in atencion and "Updater" in atencion
+    assert "Escritorio remoto" in atencion and "a.exe" in atencion
+    assert r["no_revisado"] == ["puertos: acceso denegado"]
+
+
+def test_comandos_y_rutas_raras():
+    from asistente_core.seguridad import equipo
+
+    assert equipo.es_ruta_rara(r"C:\Users\a\AppData\Local\Temp\x.exe")
+    assert equipo.es_ruta_rara(r"C:\Users\a\AppData\Roaming\x.exe")
+    assert not equipo.es_ruta_rara(r"C:\Users\a\AppData\Roaming\Spotify\Spotify.exe")
+    assert not equipo.es_ruta_rara(r"C:\Program Files\App\app.exe")
+    assert equipo.comando_raro("mshta http://x") is not None
+    assert equipo.comando_raro(r'"C:\Program Files\Steam\steam.exe" -silent') is None

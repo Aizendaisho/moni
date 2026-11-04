@@ -1,7 +1,7 @@
 ---
 name: revisar-descargas
 title: Revisar una carpeta
-description: Revisar una CARPETA entera de una vez (Descargas, Escritorio o Documentos), no un archivo suelto.
+description: Revisar una CARPETA entera de una vez (Descargas, el Escritorio o Documentos), no un archivo suelto.
 examples:
   - revisa mis descargas
   - ¿hay algo peligroso en mis descargas?

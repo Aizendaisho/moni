@@ -22,8 +22,8 @@ Antes de cada mensaje se elige la skill en dos pasos:
   2. Si hay candidatas, el modelo confirma con una pregunta cerrada (agent/router.py) cuál
      corresponde o "ninguna". Solo con embeddings, "¿qué es un virus?" se parece más a
      "revisar archivo" que algunos pedidos reales; el modelo sí distingue preguntar de pedir.
-Medido en la PC con nomic-embed-text + qwen3:4b-instruct: 23 de 25 mensajes bien, ~1 s extra
-solo cuando hay candidatas.
+Medido en la PC con nomic-embed-text + qwen3:4b-instruct y 6 skills: 26 de 29 mensajes bien
+(los 3 fallos, inofensivos), ~1 s extra solo cuando hay candidatas.
 
 La skill elegida se le pasa al modelo con sus pasos: así el modelo pequeño no tiene que
 adivinar qué herramientas usar ni en qué orden. Los archivos se releen si cambian: no hace
