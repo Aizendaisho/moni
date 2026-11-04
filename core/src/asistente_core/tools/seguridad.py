@@ -101,7 +101,7 @@ def _recorrer(base: Path, profundidad: int):
 
 
 @herramienta(Nivel.LIBRE, etiqueta="Revisando el archivo")
-def revisar_archivo(ruta: str, consultar_internet: bool = True) -> dict:
+def revisar_archivo(ruta: str) -> dict:
     """Revisa si un archivo es peligroso SIN abrirlo ni ejecutarlo: tipo real, extensión engañosa,
     reglas de malware (YARA), macros de Office, PDF con JavaScript, programas sin firma,
     Windows Defender y, en internet, solo el hash del archivo. Úsala cuando pregunten si un
@@ -109,7 +109,6 @@ def revisar_archivo(ruta: str, consultar_internet: bool = True) -> dict:
 
     Args:
       ruta: Ruta completa, o solo el nombre del archivo (se busca en Descargas, Escritorio y Documentos), o "descargas/nombre.pdf".
-      consultar_internet: Si se consulta el hash en bases de malware públicas. El archivo nunca se sube.
     """
     p = resolver(ruta)
     if p.is_dir():
@@ -117,7 +116,7 @@ def revisar_archivo(ruta: str, consultar_internet: bool = True) -> dict:
     inf = analisis.analizar(
         p,
         _reglas,
-        consultar_internet=consultar_internet and settings.security_hash_lookup,
+        consultar_internet=settings.security_hash_lookup,
         clave_abusech=settings.abusech_auth_key,
     )
     return inf.como_dict()
@@ -155,7 +154,7 @@ def revisar_carpeta(carpeta: str = "descargas", limite: int = 15) -> dict:
             "fecha": datetime.fromtimestamp(q.stat().st_mtime).strftime("%d/%m/%Y"),
             "veredicto": inf.veredicto,
         }
-        if inf.hallazgos:
+        if inf.veredicto != "sin hallazgos":
             fila["motivo"] = inf.como_dict()["hallazgos"][0]["detalle"]
         filas.append(fila)
     # primero lo preocupante

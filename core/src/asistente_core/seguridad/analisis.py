@@ -416,11 +416,14 @@ def revisar_pe(ruta: Path, inf: Informe) -> None:
         for s in pe.sections:
             nombre = s.Name.rstrip(b"\x00").decode("latin-1", errors="ignore")
             secciones.append(nombre)
-            if s.SizeOfRawData > 4096 and s.get_entropy() > 7.2:
+            # Solo el código cuenta: los recursos (.rsrc) y los datos de los instaladores
+            # legítimos suelen ir comprimidos.
+            ejecutable = bool(s.Characteristics & 0x20000000)  # IMAGE_SCN_MEM_EXECUTE
+            if ejecutable and s.SizeOfRawData > 4096 and s.get_entropy() > 7.2:
                 inf.hallar(
                     "baja",
-                    f"La sección {nombre or '(sin nombre)'} está comprimida o cifrada: puede "
-                    "estar empaquetado para esconder su código",
+                    f"El código ({nombre or 'sección sin nombre'}) está comprimido o cifrado: "
+                    "puede estar empaquetado para esconder lo que hace",
                 )
         if any(n.upper().startswith("UPX") for n in secciones):
             inf.hallar("baja", "Está comprimido con UPX (común en malware, pero también legítimo)")
