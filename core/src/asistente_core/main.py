@@ -11,6 +11,11 @@ Protocolo (JSON):
                  {"type": "memory", "count": n}               encontró n recuerdos relevantes
                  {"type": "skill", "name", "title"}           aplica una de sus skills
                  {"type": "notice", "text"}                   aviso de un trabajo en segundo plano
+                 {"type": "transcript", "text"}               lo que se entendió por voz
+                 {"type": "voice_state", "state"}             escuchando, transcribiendo, hablando...
+  app -> núcleo: {"type": "listen"}                           grabar una frase (micrófono)
+                 {"type": "voice_mode", "on": bool}           manos libres ("Moni, ...")
+                 {"type": "stop_speaking"}                    que se calle
                  {"type": "confirm", "id", "question"}        pedir Sí/No antes de una acción
                  {"type": "confirm_closed", "id"}             la pregunta caducó (sin respuesta)
                  {"type": "done"} / {"type": "error", "message": ...}
@@ -38,6 +43,7 @@ from .config import settings
 from .memory import bitacora, conocimiento, respaldo
 from .memory.historial import Historial
 from .tools.registry import REGISTRO
+from .voice.texto import Frases
 
 log = logging.getLogger("moni")
 historial = Historial(settings.data_dir / "moni.db")
@@ -259,8 +265,54 @@ def _args_con_mensaje(nombre: str, texto: str) -> dict | None:
     return {requeridos[0]: texto} if requeridos else {}
 
 
+# ---------------------------------------------------------------- voz
+
+_voz = None  # MotorVoz, se crea la primera vez que se usa
+_sesion_voz: "Sesion | None" = None  # ventana que recibe lo que se dice por voz
+
+
+def _motor_voz(loop: asyncio.AbstractEventLoop):
+    """Crea el motor de voz la primera vez. Sus avisos llegan desde otros hilos."""
+    global _voz
+    if _voz is not None:
+        return _voz
+    from .voice.motor import MotorVoz
+
+    def al_transcribir(texto: str) -> None:
+        s = _sesion_voz
+        if s is not None:
+            loop.call_soon_threadsafe(
+                s.cola.put_nowait, {"type": "chat", "text": texto, "voz": True}
+            )
+
+    def al_cambiar_estado(estado: str) -> None:
+        s = _sesion_voz
+        if s is not None:
+            asyncio.run_coroutine_threadsafe(
+                _enviar_seguro(s, {"type": "voice_state", "state": estado}), loop
+            )
+
+    modelos = settings.data_dir / "modelos"
+    _voz = MotorVoz(
+        modelos / "whisper" / settings.whisper_model,
+        modelos / "piper" / f"{settings.piper_voice}.onnx",
+        al_transcribir,
+        al_cambiar_estado,
+        interrumpir_con_voz=settings.voice_barge_in,
+    )
+    return _voz
+
+
+async def _enviar_seguro(s: "Sesion", msg: dict) -> None:
+    try:
+        await s.ws.send_json(msg)
+    except Exception:  # noqa: BLE001 - ventana cerrada
+        log.debug("No se pudo enviar %s", msg.get("type"))
+
+
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket) -> None:
+    global _sesion_voz
     await ws.accept()
     sesion = Sesion(ws)
     SESIONES.add(sesion)
@@ -274,10 +326,29 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 conv = historial.nueva()
                 await sesion.enviar_historial(conv)
                 continue
+            if tipo in ("listen", "voice_mode", "stop_speaking"):
+                try:
+                    motor = _motor_voz(asyncio.get_running_loop())
+                    _sesion_voz = sesion
+                    if tipo == "listen":
+                        motor.escuchar_una_vez()
+                    elif tipo == "voice_mode":
+                        motor.activar_manos_libres(bool(msg.get("on")))
+                    else:
+                        motor.callar()
+                except Exception as exc:
+                    log.exception("Voz")
+                    await ws.send_json({"type": "error", "message": f"Voz: {exc}"})
+                continue
             if tipo != "chat":
                 continue
 
             texto = str(msg.get("text", ""))
+            hablar = bool(msg.get("voz")) or bool(
+                _voz and _voz.manos_libres and _sesion_voz is sesion
+            )
+            if msg.get("voz"):
+                await ws.send_json({"type": "transcript", "text": texto})
             historial.agregar(conv, {"role": "user", "content": texto})
             mensajes = historial.mensajes(conv, settings.history_limit)
             recuerdos, skill = await asyncio.gather(_recordar(texto), _elegir_skill(texto))
@@ -317,11 +388,18 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 usadas_en(contexto),
             )
             log.info("Herramientas ofrecidas (%d): %s", len(nombres), ", ".join(nombres))
+            frases = Frases() if hablar and _voz else None
             try:
                 async for evento in responder(
                     contexto, turno, confirmar=sesion.confirmar, herramientas=esquemas_de(nombres)
                 ):
                     await ws.send_json(evento)
+                    if frases is not None and evento.get("type") == "token":
+                        for f in frases.agregar(evento["text"]):
+                            _voz.decir(f)
+                if frases is not None:
+                    for f in frases.terminar():
+                        _voz.decir(f)
                 await ws.send_json({"type": "done"})
             except (WebSocketDisconnect, RuntimeError):
                 raise  # la ventana se cerró a mitad de respuesta: no hay a quién avisar
@@ -335,6 +413,11 @@ async def ws_endpoint(ws: WebSocket) -> None:
         pass
     finally:
         SESIONES.discard(sesion)
+        if _sesion_voz is sesion:
+            _sesion_voz = None
+            if _voz is not None:
+                _voz.activar_manos_libres(False)
+                _voz.callar()
         lector.cancel()
         log.info("Ventana desconectada")
 

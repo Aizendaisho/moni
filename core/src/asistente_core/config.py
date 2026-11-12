@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     whisper_model: str = "small"
     piper_voice: str = "es_MX-ald-medium"
+    voice_barge_in: bool = True  # interrumpir a Moni hablando por encima
 
     data_dir: Path = RAIZ / "data"  # historial, memoria y bitácora (ignorado por git)
 

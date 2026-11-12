@@ -18,7 +18,7 @@ log = logging.getLogger("moni.resumen")
 
 TAM_PARTE = 8000
 PARTES_DIRECTO = 3  # hasta aquí se resume al momento; más, en segundo plano
-SEGUNDOS_POR_PARTE = 13
+SEGUNDOS_POR_PARTE = 30  # medido en la PC: ~30 s por parte (23 partes en ~11 min)
 
 LLM = Callable[[str, str], str]  # (instrucciones, texto) -> respuesta
 
