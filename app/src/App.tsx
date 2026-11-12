@@ -10,6 +10,16 @@ function icono(estado: string): string {
   return "🔧";
 }
 
+function estadoVoz(estado: string): string {
+  const textos: Record<string, string> = {
+    escuchando: "👂 Escuchando…",
+    "te escucho": "👂 Te escucho, dime…",
+    transcribiendo: "✍️ Entendiendo…",
+    hablando: "🔊 Hablando…",
+  };
+  return textos[estado] ?? (estado.startsWith("error") ? `⚠️ Voz: ${estado.slice(7)}` : estado);
+}
+
 export default function App() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -17,6 +27,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [tool, setTool] = useState<string | null>(null); // herramienta en uso
   const [confirm, setConfirm] = useState<{ id: string; question: string } | null>(null);
+  const [voz, setVoz] = useState("inactivo"); // estado del motor de voz
+  const [manosLibres, setManosLibres] = useState(false);
   const core = useRef<ReturnType<typeof connectCore> | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -46,6 +58,14 @@ export default function App() {
           break;
         case "skill":
           setTool(`Usando mi skill "${msg.title}"`);
+          break;
+        case "transcript":
+          setMessages((prev) => [...prev, { role: "user", text: `🎤 ${msg.text}` }]);
+          setBusy(true);
+          break;
+        case "voice_state":
+          setVoz(msg.state);
+          if (msg.state.startsWith("error")) setManosLibres(false);
           break;
         case "notice":
           setMessages((prev) => [...prev, { role: "assistant", text: `🔔 ${msg.text}` }]);
@@ -99,6 +119,20 @@ export default function App() {
     core.current?.send({ type: "new_conversation" });
   };
 
+  const hablarAhora = () => {
+    if (!online || busy) return;
+    core.current?.send({ type: "listen" });
+  };
+
+  const cambiarManosLibres = () => {
+    if (!online) return;
+    const on = !manosLibres;
+    setManosLibres(on);
+    core.current?.send({ type: "voice_mode", on });
+  };
+
+  const callar = () => core.current?.send({ type: "stop_speaking" });
+
   const answer = (ok: boolean) => {
     if (!confirm) return;
     core.current?.send({ type: "confirm_reply", id: confirm.id, ok });
@@ -112,6 +146,29 @@ export default function App() {
       <header className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
         <h1 className="text-lg font-semibold">Moni</h1>
         <div className="flex items-center gap-3">
+          {voz !== "inactivo" && (
+            <span className={`text-xs ${voz.startsWith("error") ? "text-red-400" : "text-cyan-300"}`}>
+              {estadoVoz(voz)}
+            </span>
+          )}
+          {voz === "hablando" && (
+            <button
+              onClick={callar}
+              className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+            >
+              ⏹ Callar
+            </button>
+          )}
+          <button
+            onClick={cambiarManosLibres}
+            disabled={!online}
+            title='Manos libres: di "Moni, ..." para hablarle'
+            className={`rounded-md border px-2 py-1 text-xs disabled:opacity-40 ${
+              manosLibres ? "border-cyan-500 bg-cyan-900 text-cyan-100" : "border-slate-700 text-slate-300 hover:bg-slate-800"
+            }`}
+          >
+            {manosLibres ? "👂 Manos libres" : "Manos libres"}
+          </button>
           <span className={`text-xs ${online ? "text-emerald-400" : "text-amber-400"}`}>
             {online ? "● Núcleo conectado" : "● Esperando al núcleo…"}
           </span>
@@ -157,6 +214,16 @@ export default function App() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Pídele algo a Moni…"
         />
+        <button
+          type="button"
+          onClick={hablarAhora}
+          disabled={!online || busy || voz === "escuchando" || voz === "transcribiendo"}
+          title="Hablarle a Moni"
+          aria-label="Hablarle a Moni"
+          className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800 disabled:opacity-40"
+        >
+          🎤
+        </button>
         <button
           type="submit"
           disabled={!online || busy}

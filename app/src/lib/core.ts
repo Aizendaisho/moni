@@ -7,7 +7,10 @@ export const CORE_WS_URL = "ws://127.0.0.1:8765/ws";
 export type ClientMessage =
   | { type: "chat"; text: string }
   | { type: "new_conversation" }
-  | { type: "confirm_reply"; id: string; ok: boolean };
+  | { type: "confirm_reply"; id: string; ok: boolean }
+  | { type: "listen" } // grabar una frase con el micrófono
+  | { type: "voice_mode"; on: boolean } // manos libres
+  | { type: "stop_speaking" }; // que Moni se calle
 
 /** Mensajes que el núcleo envía a la app. */
 export type CoreMessage =
@@ -17,6 +20,8 @@ export type CoreMessage =
   | { type: "memory"; count: number } // encontró recuerdos relevantes en su memoria
   | { type: "skill"; name: string; title: string } // aplica una de sus skills
   | { type: "notice"; text: string; ruta?: string } // aviso de un trabajo en segundo plano
+  | { type: "transcript"; text: string } // lo que Moni entendió por voz
+  | { type: "voice_state"; state: string } // escuchando, transcribiendo, hablando…
   | { type: "confirm"; id: string; question: string } // pedir Sí/No antes de una acción
   | { type: "confirm_closed"; id: string } // la pregunta caducó
   | { type: "done" } // terminó la respuesta

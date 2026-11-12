@@ -132,9 +132,21 @@ async def _repartir_avisos() -> None:
                 SESIONES.discard(s)
 
 
+async def _precargar_voz() -> None:
+    """Carga los modelos de voz en segundo plano para que el primer 🎤 responda al momento."""
+    if not settings.voice_preload:
+        return
+    try:
+        await asyncio.to_thread(_motor_voz(asyncio.get_running_loop()).cargar)
+        log.info("Voz lista")
+    except Exception:
+        log.exception("No se pudo precargar la voz")
+
+
 @asynccontextmanager
 async def ciclo_de_vida(_app: FastAPI):
     tareas = [
+        asyncio.create_task(_precargar_voz()),
         asyncio.create_task(_repartir_avisos()),
         asyncio.create_task(_copias_automaticas()),
         asyncio.create_task(_conocimiento_de_seguridad()),
