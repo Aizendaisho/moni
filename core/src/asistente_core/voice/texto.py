@@ -67,3 +67,17 @@ def activacion(transcripcion: str) -> tuple[bool, str]:
     # devolvemos el resto con las mayúsculas originales
     resto = transcripcion.strip()[len(transcripcion.strip()) - len(m[1]) :] if m[1] else ""
     return True, resto.strip()
+
+
+# Frases que Whisper inventa con silencio, ruido o música (aprendidas de subtítulos de videos).
+_FANTASMAS = re.compile(
+    r"^(¡?muchas gracias( a (la comunidad|todos))?[.!]*|gracias( por (ver|mirar|su atención))?[.!]*|"
+    r"subt[ií]tulos? (realizados? )?por.*|suscr[ií]bete.*|amara\.org.*|"
+    r"\.+|¡?ch[aá]o[.!]*|adi[oó]s[.!]*|hasta (luego|la pr[oó]xima)[.!]*)$",
+    re.IGNORECASE,
+)
+
+
+def es_alucinacion(texto: str) -> bool:
+    t = texto.strip().strip("¡!¿?. ")
+    return not t or bool(_FANTASMAS.match(texto.strip()))

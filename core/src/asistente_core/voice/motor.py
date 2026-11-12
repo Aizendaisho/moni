@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .texto import activacion, limpiar_para_voz
+from .texto import activacion, es_alucinacion, limpiar_para_voz
 from .vad import BLOQUE, FRECUENCIA, DetectorSilero, Segmentador
 
 log = logging.getLogger("moni.voz")
@@ -48,7 +48,13 @@ class Transcriptor:
             condition_on_previous_text=False,
             initial_prompt="Moni, asistente personal.",  # ayuda a escribir bien su nombre
         )
-        return " ".join(s.text.strip() for s in segmentos).strip()
+        # Whisper "alucina" frases con ruido o silencio: se descartan los segmentos que él
+        # mismo marca como probable no-voz o con muy poca confianza.
+        buenos = [
+            s.text.strip() for s in segmentos if s.no_speech_prob < 0.6 and s.avg_logprob > -1.0
+        ]
+        texto = " ".join(buenos).strip()
+        return "" if es_alucinacion(texto) else texto
 
 
 class Sintetizador:
@@ -92,6 +98,7 @@ class MotorVoz:
         self._hablar_cola: queue.Queue[str | None] = queue.Queue()
         self._callar = threading.Event()
         self.hablando = threading.Event()
+        self._eco_hasta = 0.0  # tras hablar, se ignora el micrófono un momento (eco)
         self._escuchando = threading.Event()  # hilo de micrófono activo
         self.manos_libres = False
         self._una_vez = False
@@ -159,6 +166,7 @@ class MotorVoz:
                 log.exception("No se pudo hablar")
             finally:
                 if self._hablar_cola.empty():
+                    self._eco_hasta = time.monotonic() + 0.6
                     self.hablando.clear()
                     self.al_cambiar_estado("escuchando" if self.manos_libres else "inactivo")
 
@@ -210,6 +218,9 @@ class MotorVoz:
                 except queue.Empty:
                     continue
                 prob = self._vad(bloque)
+                if not self.hablando.is_set() and time.monotonic() < self._eco_hasta:
+                    seg.reiniciar()
+                    continue
                 if self.hablando.is_set():
                     if (
                         self.interrumpir_con_voz
@@ -217,7 +228,7 @@ class MotorVoz:
                     ):
                         log.info("Interrupción por voz")
                         self.callar()
-                        self._esperando_orden = True
+                    seg.reiniciar()
                     continue
                 frase = seg.procesar(bloque, prob)
                 if frase is None:

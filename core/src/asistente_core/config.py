@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     piper_voice: str = "es_MX-claude-high"  # voz femenina; otras en voice/voces.py
     voice_style: str = "suave"  # "suave" o "normal"
     voice_speaker: int | None = None  # para voces con varios hablantes (sharvard: 1 = femenina)
-    voice_barge_in: bool = True  # interrumpir a Moni hablando por encima
+    # Interrumpir a Moni hablándole encima. Apagado: con parlantes, su propio eco la corta.
+    # Con audífonos se puede activar.
+    voice_barge_in: bool = False
     voice_preload: bool = True  # cargar Whisper y Piper al arrancar (~25 s, ~1 GB de RAM)
 
     data_dir: Path = RAIZ / "data"  # historial, memoria y bitácora (ignorado por git)

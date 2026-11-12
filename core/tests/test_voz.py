@@ -190,3 +190,22 @@ def test_cambiar_voz(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="No conozco"):
         tvoz.cambiar_voz("klingon")
+
+
+def test_alucinaciones_de_whisper():
+    for fantasma in [
+        "¡Muchas gracias a la comunidad!",
+        "Gracias por ver.",
+        "Subtítulos realizados por la comunidad de Amara.org",
+        "...",
+        "Suscríbete al canal",
+        "",
+    ]:
+        assert vt.es_alucinacion(fantasma), fantasma
+    for real in [
+        "Moni, abre el bloc de notas",
+        "muchas gracias, Moni, ahora cierra Chrome",
+        "¿qué hora es?",
+        "gracias"[:0] + "dame las gracias que me debes",
+    ]:
+        assert not vt.es_alucinacion(real), real
