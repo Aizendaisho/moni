@@ -1,7 +1,7 @@
 ---
 name: resumir-documento
 title: Resumir un documento largo
-description: Resumir un archivo (PDF, Word, texto) o una página web larga, por partes; si es un libro, en segundo plano.
+description: Resumir un ARCHIVO que ya está en la PC (PDF, Word, texto) o una URL concreta que da el usuario, por partes; si es un libro, en segundo plano.
 examples:
   - resume este pdf
   - hazme un resumen del libro que está en descargas

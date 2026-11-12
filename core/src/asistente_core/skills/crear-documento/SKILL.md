@@ -1,7 +1,7 @@
 ---
 name: crear-documento
 title: Crear un documento
-description: Escribir un documento nuevo (PDF o Word) con un resumen, un informe, apuntes o lo que pida el usuario, y guardarlo en Documentos\Moni.
+description: Escribir un documento NUEVO (PDF o Word) sobre un tema (un resumen de un libro o tema conocido, un informe, apuntes) con lo que sabes o investigas, y guardarlo en Documentos\Moni. No hace falta que el usuario tenga ningún archivo.
 examples:
   - haz un resumen del Quijote y guárdalo en un PDF
   - crea un documento de Word con lo que investigaste
