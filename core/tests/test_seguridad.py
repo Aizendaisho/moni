@@ -79,7 +79,9 @@ def test_websocket_avisa_y_pasa_la_skill(monkeypatch):
 
     real = m.responder
     monkeypatch.setattr(
-        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+        m,
+        "responder",
+        lambda ctx, turno, confirmar, **kw: real(ctx, turno, falso_stream, confirmar, **kw),
     )
     monkeypatch.setattr(m, "necesita_internet", nunca)
     monkeypatch.setattr(m, "elegir_skill", la_primera)
@@ -723,7 +725,9 @@ def test_skill_run_first_consulta_antes(monkeypatch):
 
     real = m.responder
     monkeypatch.setattr(
-        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+        m,
+        "responder",
+        lambda ctx, turno, confirmar, **kw: real(ctx, turno, falso_stream, confirmar, **kw),
     )
     monkeypatch.setattr(m, "elegir_skill", esta)
     monkeypatch.setattr(m, "ejecutar_herramienta", falso_ejecutar)

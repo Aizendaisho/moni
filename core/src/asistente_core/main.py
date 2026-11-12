@@ -33,6 +33,7 @@ from .agent import skills
 from .agent.loop import Turno, ejecutar_herramienta, responder
 from .agent.prompt import mensaje_recuerdos, mensaje_sistema
 from .agent.router import elegir_skill, necesita_internet
+from .agent.selector import Selector, esquemas_de, usadas_en
 from .config import settings
 from .memory import bitacora, conocimiento, respaldo
 from .memory.historial import Historial
@@ -54,6 +55,8 @@ skills.usar(
         conocimiento.embedder_ollama(settings.ollama_host, settings.embed_model),
     )
 )
+
+selector = Selector(conocimiento.embedder_ollama(settings.ollama_host, settings.embed_model))
 
 
 def _configurar_respaldo() -> respaldo.Respaldo | None:
@@ -307,8 +310,17 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 for m in previos:
                     historial.agregar(conv, m)
             turno = Turno()
+            nombres = await asyncio.to_thread(
+                selector.elegir,
+                texto,
+                skill.pasos if skill else None,
+                usadas_en(contexto),
+            )
+            log.info("Herramientas ofrecidas (%d): %s", len(nombres), ", ".join(nombres))
             try:
-                async for evento in responder(contexto, turno, confirmar=sesion.confirmar):
+                async for evento in responder(
+                    contexto, turno, confirmar=sesion.confirmar, herramientas=esquemas_de(nombres)
+                ):
                     await ws.send_json(evento)
                 await ws.send_json({"type": "done"})
             except (WebSocketDisconnect, RuntimeError):

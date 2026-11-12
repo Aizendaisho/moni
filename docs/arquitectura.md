@@ -73,6 +73,14 @@ El núcleo expone un WebSocket en `ws://127.0.0.1:8765/ws` (solo localhost). Men
 - `core/.../agent/personalidad.md`: cómo habla Moni. Se relee en cada mensaje.
 - `data/moni.db`: historial en SQLite (conversaciones y mensajes, incluidos los resultados de herramientas) y la tabla `acciones`, la bitácora de auditoría de cada herramienta usada.
 
+## Herramientas ofrecidas por mensaje
+
+Con más de 30 herramientas, sus descripciones ocupan ~4600 tokens y no caben con la
+conversación en el contexto de 6144. `agent/selector.py` ofrece en cada mensaje solo: las
+básicas (hora, sistema, procesos, abrir/cerrar programas, investigar, recordar, mis_skills),
+las que nombra la skill activa, o si no hay skill las 6 más parecidas al mensaje (embeddings),
+y las usadas en los últimos mensajes.
+
 ## Permisos (S2)
 
 | Nivel | Qué pasa | Ejemplos |

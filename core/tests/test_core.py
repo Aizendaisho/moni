@@ -218,7 +218,9 @@ def test_websocket_pide_confirmacion(monkeypatch):
 
     real = m.responder
     monkeypatch.setattr(
-        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+        m,
+        "responder",
+        lambda ctx, turno, confirmar, **kw: real(ctx, turno, falso_stream, confirmar, **kw),
     )
     monkeypatch.setattr(m, "historial", Historial(":memory:"))
     try:
@@ -418,7 +420,9 @@ def test_recuerdos_se_inyectan_antes_del_mensaje(monkeypatch):
 
     real = m.responder
     monkeypatch.setattr(
-        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+        m,
+        "responder",
+        lambda ctx, turno, confirmar, **kw: real(ctx, turno, falso_stream, confirmar, **kw),
     )
     monkeypatch.setattr(m, "historial", Historial(":memory:"))
     try:
@@ -453,7 +457,9 @@ def test_nucleo_investiga_si_hace_falta(monkeypatch):
 
     real = m.responder
     monkeypatch.setattr(
-        m, "responder", lambda ctx, turno, confirmar: real(ctx, turno, falso_stream, confirmar)
+        m,
+        "responder",
+        lambda ctx, turno, confirmar, **kw: real(ctx, turno, falso_stream, confirmar, **kw),
     )
     monkeypatch.setattr(m, "necesita_internet", siempre_si)
     monkeypatch.setattr(m, "ejecutar_herramienta", falso_ejecutar)

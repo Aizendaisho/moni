@@ -177,3 +177,37 @@ def test_leer_texto_plano_sin_guardar(monkeypatch):
     )
     assert guardados == []
     assert web._leer("https://gutenberg.org/x.txt")[0] == 7
+
+
+def test_selector_ofrece_pocas_herramientas():
+    import json
+
+    from asistente_core.agent import selector
+    from asistente_core.tools.registry import esquemas
+
+    from .test_core import _embed_falso
+
+    s = selector.Selector(_embed_falso)
+    con_skill = s.elegir(
+        "x", pasos_skill="1. Llama a revisar_archivo y luego a poner_en_cuarentena."
+    )
+    assert con_skill[: len(selector.BASE)] == list(selector.BASE)
+    assert {"revisar_archivo", "poner_en_cuarentena"} <= set(con_skill)
+    assert len(con_skill) == len(selector.BASE) + 2
+
+    sin_skill = s.elegir("crear documento pdf con un resumen")
+    assert (
+        "crear_documento" in sin_skill
+        and len(sin_skill) <= len(selector.BASE) + selector.MAS_PARECIDAS
+    )
+    # lo que se usó hace poco sigue disponible
+    usadas = selector.usadas_en(
+        [{"role": "assistant", "tool_calls": [{"function": {"name": "ver_cuarentena"}}]}]
+    )
+    assert "ver_cuarentena" in s.elegir("y el otro?", usadas=usadas)
+    # sin embeddings, solo las básicas
+    assert selector.Selector(None).elegir("hola") == list(selector.BASE)
+    # cabe de sobra: menos de la mitad que todas
+    todas = len(json.dumps(esquemas(), ensure_ascii=False))
+    ofrecidas = len(json.dumps(selector.esquemas_de(sin_skill), ensure_ascii=False))
+    assert ofrecidas < todas / 2

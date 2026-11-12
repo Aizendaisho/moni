@@ -97,12 +97,15 @@ async def responder(
     turno: Turno,
     stream: Callable[[list[dict], list[dict]], AsyncIterator[Any]] = chat_stream,
     confirmar: Confirmar | None = None,
+    herramientas: list[dict] | None = None,
 ) -> AsyncIterator[dict]:
-    """Corre el bucle para el último mensaje del usuario en `mensajes`."""
+    """Corre el bucle para el último mensaje del usuario en `mensajes`. `herramientas`: los
+    esquemas que se ofrecen al modelo (por defecto, todas)."""
     contexto = list(mensajes)
+    ofrecidas = esquemas() if herramientas is None else herramientas
     for _ in range(MAX_PASOS):
         texto, llamadas, empezo = "", [], False
-        async for part in stream(contexto, esquemas()):
+        async for part in stream(contexto, ofrecidas):
             msg = part.message
             if msg.tool_calls:
                 llamadas.extend(msg.tool_calls)
