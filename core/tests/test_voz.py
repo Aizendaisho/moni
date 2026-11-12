@@ -135,3 +135,28 @@ def test_websocket_voz(monkeypatch):
     assert motor.llamadas[:3] == ["listen", "manos_libres=True", "callar"]
     assert motor.dicho[:2] == ["Son las tres de la tarde.", "¿Algo **más**?"]
     assert motor.manos_libres is False  # al cerrar la ventana se apaga
+
+
+def test_voces_url_y_descarga(tmp_path):
+    import httpx
+    import pytest
+
+    from asistente_core.voice import voces
+
+    assert voces.url_de("es_MX-claude-high").endswith("/es/es_MX/claude/high/es_MX-claude-high")
+    assert voces.url_de("es_AR-daniela-high").endswith("/es/es_AR/daniela/high/es_AR-daniela-high")
+    with pytest.raises(ValueError):
+        voces.url_de("claude")
+    pedidas = []
+
+    def api(req):
+        pedidas.append(str(req.url))
+        return httpx.Response(200, content=b"datos")
+
+    ruta = voces.asegurar(
+        "es_MX-claude-high", tmp_path, httpx.Client(transport=httpx.MockTransport(api))
+    )
+    assert ruta.read_bytes() == b"datos" and (tmp_path / "es_MX-claude-high.onnx.json").exists()
+    voces.asegurar("es_MX-claude-high", tmp_path, httpx.Client(transport=httpx.MockTransport(api)))
+    assert len(pedidas) == 2  # la segunda vez no descarga nada
+    assert voces.ESTILOS["suave"]["length_scale"] > 1  # más lenta que la normal

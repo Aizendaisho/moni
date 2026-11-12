@@ -53,7 +53,7 @@ Antes de añadir algo al proyecto, se registra aquí. Si la licencia no es open 
 | Moondream 2 | visión | Apache-2.0 |
 | nomic-embed-text | embeddings | Apache-2.0 |
 | Whisper small (faster-whisper) | voz a texto | MIT |
-| Voz Piper es_MX-ald-medium | voz | revisar en su MODEL_CARD |
+| Voz Piper es_MX-claude-high (por defecto) | voz femenina | ver MODEL_CARD en huggingface.co/rhasspy/piper-voices |
 | Modelos base de openWakeWord | palabra de activación | CC BY-NC-SA 4.0 (no comercial) |
 
 ## Pendientes

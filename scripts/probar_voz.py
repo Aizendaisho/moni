@@ -13,7 +13,7 @@ import numpy as np
 
 from asistente_core.config import settings
 
-FRASE = "Hola, soy Moni. Moni, abre el bloc de notas, por favor."
+FRASE = "Hola, soy Moni. Esta es mi nueva voz. Moni, abre el bloc de notas, por favor."
 res: dict = {"frase": FRASE}
 
 

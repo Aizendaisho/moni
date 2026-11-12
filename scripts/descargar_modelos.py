@@ -4,17 +4,13 @@ Se ejecuta desde scripts/setup.ps1:  uv run python ../scripts/descargar_modelos.
 """
 
 import sys
-import urllib.request
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 MODELOS = RAIZ / "data" / "modelos"
 
 WHISPER = "small"
-PIPER_VOZ = (
-    "es_MX-ald-medium"  # cambia aquí la voz; lista en https://rhasspy.github.io/piper-samples/
-)
-PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium"
+PIPER_VOZ = "es_MX-claude-high"  # voz femenina; otras en core/src/asistente_core/voice/voces.py
 
 
 def paso(texto: str) -> None:
@@ -30,14 +26,10 @@ def whisper() -> None:
 
 
 def piper() -> None:
-    destino = MODELOS / "piper"
-    destino.mkdir(parents=True, exist_ok=True)
-    for ext in (".onnx", ".onnx.json"):
-        archivo = destino / f"{PIPER_VOZ}{ext}"
-        if archivo.exists():
-            continue
-        paso(f"Piper {archivo.name}")
-        urllib.request.urlretrieve(f"{PIPER_BASE}/{PIPER_VOZ}{ext}", archivo)
+    from asistente_core.voice.voces import asegurar
+
+    paso(f"Piper {PIPER_VOZ}")
+    asegurar(PIPER_VOZ, MODELOS / "piper")
 
 
 def wakeword() -> None:

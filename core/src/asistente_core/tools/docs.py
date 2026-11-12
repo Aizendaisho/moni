@@ -89,7 +89,10 @@ def abrir_documento(nombre: str) -> str:
 def limpiar_titulo(titulo: str) -> str:
     """'Don Quijote - Wikipedia, la enciclopedia libre' -> 'Don Quijote'."""
     t = re.sub(
-        r"\s+[-|–—]\s+[^-|–—]*(wikipedia|enciclopedia|wiki)[^-|–—]*$", "", titulo, flags=re.IGNORECASE
+        r"\s+[-|–—]\s+[^-|–—]*(wikipedia|enciclopedia|wiki)[^-|–—]*$",
+        "",
+        titulo,
+        flags=re.IGNORECASE,
     )
     return t.strip() or titulo
 

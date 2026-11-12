@@ -40,7 +40,9 @@ def destinos() -> list:
 def main() -> int:
     print("=== Restaurar la memoria de Moni ===\n")
     if nucleo_encendido():
-        print("El núcleo de Moni está encendido. Cierra la ventana 'Moni - nucleo' y vuelve a intentarlo.")
+        print(
+            "El núcleo de Moni está encendido. Cierra la ventana 'Moni - nucleo' y vuelve a intentarlo."
+        )
         return 1
 
     opciones: list[tuple[str, object, str]] = []  # (nombre, destino, etiqueta)

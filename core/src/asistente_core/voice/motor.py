@@ -52,12 +52,16 @@ class Transcriptor:
 
 
 class Sintetizador:
-    def __init__(self, modelo: Path | str, velocidad: float = 1.0):
+    def __init__(self, modelo: Path | str, estilo: str = "suave", hablante: int | None = None):
         from piper import PiperVoice
         from piper.config import SynthesisConfig
 
+        from .voces import ESTILOS
+
         self._voz = PiperVoice.load(str(modelo))
-        self._config = SynthesisConfig(length_scale=1.0 / max(0.5, velocidad))
+        self._config = SynthesisConfig(
+            speaker_id=hablante, **ESTILOS.get(estilo, ESTILOS["normal"])
+        )
         self.frecuencia = self._voz.config.sample_rate
 
     def __call__(self, frase: str) -> np.ndarray:
@@ -73,7 +77,10 @@ class MotorVoz:
         al_transcribir: Callable[[str], None],
         al_cambiar_estado: Callable[[str], None] = lambda e: None,
         interrumpir_con_voz: bool = True,
+        estilo: str = "suave",
+        hablante: int | None = None,
     ):
+        self.estilo, self.hablante = estilo, hablante
         self.modelo_whisper, self.modelo_piper = modelo_whisper, modelo_piper
         self.al_transcribir = al_transcribir
         self.al_cambiar_estado = al_cambiar_estado
@@ -106,9 +113,10 @@ class MotorVoz:
                     raise ValueError(f"Falta el modelo de Whisper en {self.modelo_whisper}")
                 self._stt = Transcriptor(self.modelo_whisper)
             if self._tts is None:
-                if not Path(self.modelo_piper).exists():
-                    raise ValueError(f"Falta la voz de Piper en {self.modelo_piper}")
-                self._tts = Sintetizador(self.modelo_piper)
+                from .voces import asegurar
+
+                modelo = asegurar(Path(self.modelo_piper).stem, Path(self.modelo_piper).parent)
+                self._tts = Sintetizador(modelo, self.estilo, self.hablante)
 
     # ------------------------------------------------------------ hablar
 

@@ -311,6 +311,8 @@ def _motor_voz(loop: asyncio.AbstractEventLoop):
         al_transcribir,
         al_cambiar_estado,
         interrumpir_con_voz=settings.voice_barge_in,
+        estilo=settings.voice_style,
+        hablante=settings.voice_speaker,
     )
     return _voz
 
