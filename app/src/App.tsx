@@ -47,6 +47,9 @@ export default function App() {
         case "skill":
           setTool(`Usando mi skill "${msg.title}"`);
           break;
+        case "notice":
+          setMessages((prev) => [...prev, { role: "assistant", text: `🔔 ${msg.text}` }]);
+          break;
         case "confirm":
           setConfirm({ id: msg.id, question: msg.question });
           break;

@@ -13,7 +13,10 @@ páginas se le entrega al modelo marcado como información, no como instruccione
 
 import ipaddress
 import logging
+import re
 import socket
+import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
 import httpx
@@ -160,10 +163,16 @@ def buscar_en_internet(consulta: str, cantidad: int = 5) -> list[dict]:
     ]
 
 
-def _leer(url: str, consulta: str | None = None) -> tuple[int, str, str, str]:
-    """Descarga, extrae y guarda una página. Devuelve (id en memoria, título, url, texto)."""
+def _leer(url: str, consulta: str | None = None, guardar: bool = True) -> tuple[int, str, str, str]:
+    """Descarga, extrae y (si guardar) guarda una página. Devuelve (id en memoria o 0,
+    título, url, texto)."""
     html, final = _descargar(url)
-    titulo, texto = extraer(html, final)
+    if not re.search(r"<(html|body|p|div|article)\b", html[:20000], re.IGNORECASE):
+        # texto plano (por ejemplo un libro de Project Gutenberg)
+        primera = next((ln.strip() for ln in html.splitlines() if ln.strip()), "")
+        titulo, texto = primera[:120] or final, html.strip()
+    else:
+        titulo, texto = extraer(html, final)
     if len(texto) < MIN_TEXTO:  # probablemente se arma con JavaScript
         log.info("Poco texto en %s; reintentando con navegador", final)
         try:
@@ -174,6 +183,8 @@ def _leer(url: str, consulta: str | None = None) -> tuple[int, str, str, str]:
             log.warning("Falló la lectura con navegador: %s", exc)
     if not texto:
         raise ValueError("No pude sacar texto útil de esa página.")
+    if not guardar:
+        return 0, titulo, final, texto
     fid = _memoria().guardar(titulo, texto, url=final, tipo="pagina", consulta=consulta)
     return fid, titulo, final, texto
 
@@ -212,16 +223,34 @@ def investigar(pregunta: str, paginas: int = 2) -> dict:
       paginas: Cuántas páginas leer (1 a 4). Más páginas = más completo pero más lento.
     """
     paginas = max(1, min(int(paginas), 4))
+    t0 = time.perf_counter()
     resultados = buscar_en_internet(pregunta, cantidad=8)
-    leidas: list[dict] = []
-    for r in resultados:
-        if len(leidas) >= paginas:
-            break
+    t_buscar = time.perf_counter() - t0
+
+    def leer_una(r: dict) -> dict | None:
+        t = time.perf_counter()
         try:
-            fid, titulo, final, _ = _leer(r["url"], pregunta)
-            leidas.append({"id": fid, "titulo": titulo, "url": final})
+            fid, titulo, final, texto = _leer(r["url"], pregunta)
         except Exception as exc:  # noqa: BLE001 - una página que falla no detiene la investigación
             log.info("No se pudo leer %s: %s", r["url"], exc)
+            return None
+        log.info("Leída %s (%d caracteres) en %.1f s", final, len(texto), time.perf_counter() - t)
+        return {"id": fid, "titulo": titulo, "url": final}
+
+    # Se leen en paralelo los candidatos de a `paginas` (+1 de reserva por si alguno falla).
+    leidas: list[dict] = []
+    t1 = time.perf_counter()
+    pendientes = list(resultados)
+    with ThreadPoolExecutor(max_workers=paginas + 1) as pool:
+        while pendientes and len(leidas) < paginas:
+            lote, pendientes = (
+                pendientes[: paginas - len(leidas) + 1],
+                pendientes[paginas - len(leidas) + 1 :],
+            )
+            for hecha in pool.map(leer_una, lote):
+                if hecha and len(leidas) < paginas:
+                    leidas.append(hecha)
+    t_leer = time.perf_counter() - t1
     memoria = _memoria()
     fragmentos = sorted(
         (
@@ -232,6 +261,13 @@ def investigar(pregunta: str, paginas: int = 2) -> dict:
         key=lambda f: f["relevancia"],
         reverse=True,
     )[:5]
+    log.info(
+        "investigar: buscar %.1f s, leer %d páginas %.1f s, recordar %.1f s",
+        t_buscar,
+        len(leidas),
+        t_leer,
+        time.perf_counter() - t1 - t_leer,
+    )
     usados = {f["url"] for f in fragmentos}
     return {
         "aviso": f"El texto de los fragmentos {_AVISO}.",

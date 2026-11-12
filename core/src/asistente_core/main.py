@@ -10,6 +10,7 @@ Protocolo (JSON):
                  {"type": "tool", ...}                        Moni usa una herramienta
                  {"type": "memory", "count": n}               encontró n recuerdos relevantes
                  {"type": "skill", "name", "title"}           aplica una de sus skills
+                 {"type": "notice", "text"}                   aviso de un trabajo en segundo plano
                  {"type": "confirm", "id", "question"}        pedir Sí/No antes de una acción
                  {"type": "confirm_closed", "id"}             la pregunta caducó (sin respuesta)
                  {"type": "done"} / {"type": "error", "message": ...}
@@ -27,7 +28,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from . import tools  # noqa: F401 - registra las herramientas
+from . import avisos, tools  # noqa: F401 - registra las herramientas
 from .agent import skills
 from .agent.loop import Turno, ejecutar_herramienta, responder
 from .agent.prompt import mensaje_recuerdos, mensaje_sistema
@@ -102,9 +103,30 @@ async def _conocimiento_de_seguridad() -> None:
         log.exception("No se pudo actualizar el conocimiento de seguridad")
 
 
+SESIONES: set["Sesion"] = set()
+
+
+async def _repartir_avisos() -> None:
+    """Avisos de trabajos en segundo plano: se guardan en la conversación actual y se
+    envían a todas las ventanas abiertas."""
+    cola = avisos.configurar(asyncio.get_running_loop())
+    while True:
+        aviso = await cola.get()
+        try:
+            historial.agregar(historial.ultima(), {"role": "assistant", "content": aviso["text"]})
+        except Exception:
+            log.exception("No se pudo guardar el aviso")
+        for s in list(SESIONES):
+            try:
+                await s.ws.send_json({"type": "notice", **aviso})
+            except Exception:  # noqa: BLE001 - ventana cerrada
+                SESIONES.discard(s)
+
+
 @asynccontextmanager
 async def ciclo_de_vida(_app: FastAPI):
     tareas = [
+        asyncio.create_task(_repartir_avisos()),
         asyncio.create_task(_copias_automaticas()),
         asyncio.create_task(_conocimiento_de_seguridad()),
     ]
@@ -238,6 +260,7 @@ def _args_con_mensaje(nombre: str, texto: str) -> dict | None:
 async def ws_endpoint(ws: WebSocket) -> None:
     await ws.accept()
     sesion = Sesion(ws)
+    SESIONES.add(sesion)
     lector = asyncio.create_task(sesion.leer())
     conv = historial.ultima()
     try:
@@ -299,6 +322,7 @@ async def ws_endpoint(ws: WebSocket) -> None:
     except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
+        SESIONES.discard(sesion)
         lector.cancel()
         log.info("Ventana desconectada")
 

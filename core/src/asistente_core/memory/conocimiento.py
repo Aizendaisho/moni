@@ -10,6 +10,7 @@ mucho, se cambia a sqlite-vec sin tocar el resto.
 
 import re
 import sqlite3
+import threading
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -93,6 +94,7 @@ class Conocimiento:
         self._db.row_factory = sqlite3.Row
         self._db.executescript("PRAGMA foreign_keys = ON;" + _ESQUEMA)
         self._embed = embed
+        self._lock = threading.Lock()  # una sola conexión compartida entre hilos
 
     # ------------------------------------------------------------ guardar
 
@@ -109,7 +111,7 @@ class Conocimiento:
         if not trozos:
             raise ValueError("No hay texto que guardar.")
         vectores = self._embed(trozos, "documento")
-        with self._db:
+        with self._lock, self._db:
             if url:
                 self._db.execute("DELETE FROM fuentes WHERE url = ?", (url,))
             cur = self._db.execute(
@@ -141,9 +143,10 @@ class Conocimiento:
             "SELECT f.id, f.texto, f.vector, s.id AS fuente, s.titulo, s.url, s.tipo, s.fecha"
             " FROM fragmentos f JOIN fuentes s ON s.id = f.fuente_id"
         )
-        filas = self._db.execute(
-            sql + (" WHERE s.id = ?" if fuente_id else ""), (fuente_id,) if fuente_id else ()
-        ).fetchall()
+        with self._lock:
+            filas = self._db.execute(
+                sql + (" WHERE s.id = ?" if fuente_id else ""), (fuente_id,) if fuente_id else ()
+            ).fetchall()
         if not filas:
             return []
         q = np.asarray(self._embed([pregunta], "consulta")[0], dtype=np.float32)

@@ -193,8 +193,10 @@ def resumir(imp: dict, cert: dict, tls: dict, net: dict, go: dict, nombre: str =
             f".NET ({clase.get('runtime_family', '?')}, {clase.get('implementation', '?')})"
         )
         res["puede"] = [
-            "no se puede saber por sus importaciones: en .NET las capacidades están en el "
-            "código administrado y este análisis no lo descompila"
+            (
+                "no se puede saber por sus importaciones: en .NET las capacidades están en el "
+                "código administrado y este análisis no lo descompila"
+            )
         ]
         res.pop("nota_importaciones", None)
     g = (_norm(go.get("datos")) if go.get("ok") else {}).get("summary") or {}

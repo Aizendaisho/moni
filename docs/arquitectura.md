@@ -90,6 +90,19 @@ Además, `tools/apps.py` tiene una lista de procesos protegidos (Windows, Ollama
 - Seguridad: solo http/https y nunca direcciones locales o privadas (también dentro del navegador), y el texto de las páginas se entrega al modelo marcado como información, no instrucciones.
 - Privacidad: las búsquedas y las páginas que se abren salen a internet; la app lo muestra con "Buscando en internet…" / "Leyendo página…". La memoria se queda en la PC.
 
+## Documentos y resúmenes
+
+- `documentos.py`: Markdown sencillo -> PDF (reportlab) y Word (python-docx); leer PDF (pypdf),
+  Word y texto. Los documentos van a `Documentos\Moni` y nunca se sobrescriben.
+  Herramientas `crear_documento`, `leer_documento` y `abrir_documento` (solo abre lo que creó
+  Moni). Skill `crear-documento`.
+- `resumen.py`: map-reduce por partes de ~8000 caracteres con el LLM local; la combinación va
+  por niveles (máximo 4). Hasta 3 partes se resume al momento; si no, `resumir_documento`
+  trabaja en un hilo aparte (uno a la vez) y avisa al terminar. El resumen se guarda en la
+  memoria y, si se pide, en un PDF/Word. Skill `resumir-documento`.
+- `avisos.py`: avisos que llegan sin preguntar (`{"type": "notice"}`); el núcleo los guarda
+  en la conversación y los envía a todas las ventanas.
+
 ## Copias de seguridad
 
 `memory/respaldo.py`: copia consistente de `data/moni.db` (API de backup de SQLite), comprimida y cifrada en la PC con AES-256-GCM (clave derivada de la frase secreta con scrypt). Destinos: carpeta local (`ASISTENTE_BACKUP_LOCAL_DIR`, por defecto `data/respaldos`) y un bucket privado de Supabase Storage. Automática al arrancar si la última tiene más de 24 h, y se revisa cada 30 min. Retención: 7 diarias + 4 semanales. Supabase solo ve archivos cifrados. Restaurar: `scripts\restaurar.bat` (con el núcleo cerrado), que guarda antes la memoria actual y verifica la integridad de la copia.

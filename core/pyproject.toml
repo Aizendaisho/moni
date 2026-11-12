@@ -24,6 +24,9 @@ dependencies = [
     "yara-x>=1.0",
     "oletools>=0.60",
     "pefile>=2024.8.26",
+    "reportlab>=4.2",
+    "python-docx>=1.1",
+    "pypdf>=5.0",
 ]
 
 [project.optional-dependencies]

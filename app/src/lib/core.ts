@@ -16,6 +16,7 @@ export type CoreMessage =
   | { type: "tool"; name: string; label: string; status: "start" | "end"; ok?: boolean }
   | { type: "memory"; count: number } // encontró recuerdos relevantes en su memoria
   | { type: "skill"; name: string; title: string } // aplica una de sus skills
+  | { type: "notice"; text: string; ruta?: string } // aviso de un trabajo en segundo plano
   | { type: "confirm"; id: string; question: string } // pedir Sí/No antes de una acción
   | { type: "confirm_closed"; id: string } // la pregunta caducó
   | { type: "done" } // terminó la respuesta
