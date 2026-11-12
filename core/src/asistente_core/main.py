@@ -304,16 +304,22 @@ def _motor_voz(loop: asyncio.AbstractEventLoop):
                 _enviar_seguro(s, {"type": "voice_state", "state": estado}), loop
             )
 
+    from .voice import voces
+
     modelos = settings.data_dir / "modelos"
+    pref = voces.leer_preferencia(settings.data_dir / "voz.json") or {}  # la elegida por chat
     _voz = MotorVoz(
         modelos / "whisper" / settings.whisper_model,
-        modelos / "piper" / f"{settings.piper_voice}.onnx",
+        modelos / "piper" / f"{pref.get('voz') or settings.piper_voice}.onnx",
         al_transcribir,
         al_cambiar_estado,
         interrumpir_con_voz=settings.voice_barge_in,
-        estilo=settings.voice_style,
-        hablante=settings.voice_speaker,
+        estilo=pref.get("estilo") or settings.voice_style,
+        hablante=pref.get("hablante", settings.voice_speaker),
     )
+    from .voice import estado
+
+    estado.motor = _voz
     return _voz
 
 

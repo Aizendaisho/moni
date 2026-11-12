@@ -249,6 +249,12 @@ class MotorVoz:
             return
         self.al_cambiar_estado("escuchando")
 
+    def cambiar_voz(self, modelo_piper: Path, estilo: str, hablante: int | None) -> None:
+        """Cambia la voz; se carga (y descarga si hace falta) en la próxima frase."""
+        with self._carga:
+            self.modelo_piper, self.estilo, self.hablante = Path(modelo_piper), estilo, hablante
+            self._tts = None
+
     def detener(self) -> None:
         self.manos_libres = self._una_vez = False
         self.callar()

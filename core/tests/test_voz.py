@@ -160,3 +160,33 @@ def test_voces_url_y_descarga(tmp_path):
     voces.asegurar("es_MX-claude-high", tmp_path, httpx.Client(transport=httpx.MockTransport(api)))
     assert len(pedidas) == 2  # la segunda vez no descarga nada
     assert voces.ESTILOS["suave"]["length_scale"] > 1  # más lenta que la normal
+
+
+def test_cambiar_voz(tmp_path, monkeypatch):
+    from asistente_core.tools import voz as tvoz
+    from asistente_core.voice import estado, voces
+
+    class M:
+        def cambiar_voz(self, modelo, estilo, hablante):
+            self.args = (modelo.name, estilo, hablante)
+
+    m = M()
+    monkeypatch.setattr(estado, "motor", m)
+    monkeypatch.setattr(tvoz.settings, "data_dir", tmp_path)
+    lista = tvoz.cambiar_voz()
+    assert "es_MX-claude-high" in lista["disponibles"] and lista["estilo_actual"] == "suave"
+    r = tvoz.cambiar_voz("la voz argentina")
+    assert "es_AR-daniela-high" in r["hecho"] and m.args == (
+        "es_AR-daniela-high.onnx",
+        "suave",
+        None,
+    )
+    tvoz.cambiar_voz("española", "normal")
+    assert m.args == ("es_ES-sharvard-medium.onnx", "normal", 1)
+    assert voces.leer_preferencia(tmp_path / "voz.json")["voz"] == "es_ES-sharvard-medium"
+    tvoz.cambiar_voz(estilo="suave")  # solo el estilo: la voz se mantiene
+    assert m.args == ("es_ES-sharvard-medium.onnx", "suave", 1)
+    import pytest
+
+    with pytest.raises(ValueError, match="No conozco"):
+        tvoz.cambiar_voz("klingon")

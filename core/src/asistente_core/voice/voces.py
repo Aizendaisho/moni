@@ -61,3 +61,52 @@ def asegurar(nombre: str, carpeta: Path, cliente: httpx.Client | None = None) ->
                     f.write(bloque)
         tmp.replace(destino)
     return modelo
+
+
+# Nombres con los que la gente pide una voz -> (voz, hablante)
+ALIAS = {
+    "claude": ("es_MX-claude-high", None),
+    "mexicana": ("es_MX-claude-high", None),
+    "femenina": ("es_MX-claude-high", None),
+    "mujer": ("es_MX-claude-high", None),
+    "daniela": ("es_AR-daniela-high", None),
+    "argentina": ("es_AR-daniela-high", None),
+    "española": ("es_ES-sharvard-medium", 1),
+    "espanola": ("es_ES-sharvard-medium", 1),
+    "españa": ("es_ES-sharvard-medium", 1),
+    "masculina": ("es_MX-ald-medium", None),
+    "hombre": ("es_MX-ald-medium", None),
+    "ald": ("es_MX-ald-medium", None),
+    "davefx": ("es_ES-davefx-medium", None),
+}
+
+
+def resolver(pedido: str) -> tuple[str, int | None]:
+    p = pedido.strip().lower()
+    exacto = {k.lower(): k for k in CATALOGO}
+    if p in exacto:
+        return exacto[p], None
+    for clave, valor in ALIAS.items():
+        if clave in p:
+            return valor
+    for nombre in CATALOGO:
+        if p and p in nombre.lower():
+            return nombre, None
+    raise ValueError(
+        "No conozco esa voz. Hay: " + "; ".join(f"{k} ({v})" for k, v in CATALOGO.items())
+    )
+
+
+def guardar_preferencia(ruta: Path, voz: str, estilo: str, hablante: int | None) -> None:
+    import json
+
+    ruta.write_text(json.dumps({"voz": voz, "estilo": estilo, "hablante": hablante}), "utf-8")
+
+
+def leer_preferencia(ruta: Path) -> dict | None:
+    import json
+
+    try:
+        return json.loads(Path(ruta).read_text("utf-8"))
+    except (OSError, ValueError):
+        return None
