@@ -211,3 +211,12 @@ def test_selector_ofrece_pocas_herramientas():
     todas = len(json.dumps(esquemas(), ensure_ascii=False))
     ofrecidas = len(json.dumps(selector.esquemas_de(sin_skill), ensure_ascii=False))
     assert ofrecidas < todas / 2
+
+
+def test_limpiar_titulo():
+    assert (
+        docs.limpiar_titulo("Don Quijote de la Mancha - Wikipedia, la enciclopedia libre")
+        == "Don Quijote de la Mancha"
+    )
+    assert docs.limpiar_titulo("Godot Engine | Wikipedia") == "Godot Engine"
+    assert docs.limpiar_titulo("Informe 2026 - Ventas") == "Informe 2026 - Ventas"

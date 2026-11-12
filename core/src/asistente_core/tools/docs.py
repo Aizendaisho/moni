@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import sys
 import threading
 from pathlib import Path
@@ -85,13 +86,21 @@ def abrir_documento(nombre: str) -> str:
     return f"Abrí {p.name}"
 
 
+def limpiar_titulo(titulo: str) -> str:
+    """'Don Quijote - Wikipedia, la enciclopedia libre' -> 'Don Quijote'."""
+    t = re.sub(
+        r"\s+[-|–—]\s+[^-|–—]*(wikipedia|enciclopedia|wiki)[^-|–—]*$", "", titulo, flags=re.IGNORECASE
+    )
+    return t.strip() or titulo
+
+
 def _obtener_texto(fuente: str) -> tuple[str, str]:
     """(título, texto) de un archivo o de una URL."""
     if fuente.strip().lower().startswith(("http://", "https://")):
         from .web import _leer
 
         _, titulo, _, texto = _leer(fuente.strip(), guardar=False)
-        return titulo, texto
+        return limpiar_titulo(titulo), texto
     p = resolver(fuente)
     return p.stem, documentos.leer_texto(p)
 
